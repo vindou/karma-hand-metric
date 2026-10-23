@@ -19,3 +19,17 @@ figures/*.pdf
 # release: the paper sources, bulk data, the frozen as-submitted dev repo, and
 # any local scratch. Everything under dev/ stays out of the published tree.
 dev/
+
+# optimization exercise: per-candidate design dumps and optimizer checkpoints
+optimize/runs/*/designs/
+optimize/runs/*/cma_state.pkl
+optimize/runs_*_stdout.log
+# bulky regenerable optimizer artefacts: evaluation pickles, rendered sweeps, the marimo session cache
+optimize/runs/**/*.pkl
+optimize/runs/**/*.mp4
+optimize/__marimo__/
+
+# the owner's working notes stay local (owner's decision, 2026-10-23; SPEC.md §16 item 13)
+docs/spec_source_conversation_2026-10-11.md
+docs/phase*_prompt.md
+docs/phase*_review_*.md
