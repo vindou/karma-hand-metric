@@ -1,0 +1,112 @@
+{
+ "best_validation": {
+  "admissible": true,
+  "min_base_separation_m": 0.040273399738364975,
+  "max_reach_m": 0.1170176017496854,
+  "n_seeds": 6,
+  "exact_K_T": 0.0007291666666666666,
+  "exact_K_R": 0.004195601851851851,
+  "exact_score": 0.021277006172839504
+ },
+ "meta": {
+  "method": "adam",
+  "lr": 0.02,
+  "n_iters": 40,
+  "stages": 2,
+  "seed": 0,
+  "schedule": [
+   {
+    "mode": "soft",
+    "sigma_p_m": 0.015,
+    "sigma_r_rad": 0.25,
+    "sigma_energy": 8.0
+   },
+   {
+    "mode": "hard",
+    "sigma_p_m": 0.006,
+    "sigma_r_rad": 0.09,
+    "sigma_energy": 1.0
+   }
+  ],
+  "options": {
+   "grad_clip": 100.0,
+   "grad_spike": null,
+   "skip_nonfinite": true,
+   "reset_moments": true,
+   "stage_select": true,
+   "seed_policy": "reproject",
+   "reseed_every": 10,
+   "schedule_kw": {}
+  },
+  "stages_log": [
+   {
+    "stage": 0,
+    "iter_start": 0,
+    "config": {
+     "mode": "soft",
+     "sigma_p_m": 0.015,
+     "sigma_r_rad": 0.25,
+     "sigma_energy": 8.0
+    },
+    "n_nonfinite": 0,
+    "n_clipped": 1,
+    "n_spikes": 0,
+    "n_seeds": 6,
+    "iter_end": 20,
+    "smooth_first": 0.616449131372595,
+    "smooth_last": 0.2187103645393293,
+    "exact_end_raw": 0.014590084876543211,
+    "validation_end_raw": {
+     "admissible": true,
+     "min_base_separation_m": 0.03580218316970754,
+     "max_reach_m": 0.12068643242563626,
+     "n_seeds": 6,
+     "exact_K_T": 0.0004583333333333333,
+     "exact_K_R": 0.0030020254629629633,
+     "exact_score": 0.014590084876543211
+    },
+    "selected_iter": 20,
+    "exact_end_selected": 0.014590084876543211
+   },
+   {
+    "stage": 1,
+    "iter_start": 20,
+    "config": {
+     "mode": "hard",
+     "sigma_p_m": 0.006,
+     "sigma_r_rad": 0.09,
+     "sigma_energy": 1.0
+    },
+    "n_nonfinite": 0,
+    "n_clipped": 0,
+    "n_spikes": 0,
+    "n_seeds": 6,
+    "iter_end": 40,
+    "smooth_first": 0.03440749248514125,
+    "smooth_last": 0.09147471333617174,
+    "exact_end_raw": 0.013603395061728396,
+    "validation_end_raw": {
+     "admissible": true,
+     "min_base_separation_m": 0.0410283864215928,
+     "max_reach_m": 0.11369070233431953,
+     "n_seeds": 6,
+     "exact_K_T": 0.0003958333333333333,
+     "exact_K_R": 0.002893518518518519,
+     "exact_score": 0.013603395061728396
+    },
+    "selected_iter": 30,
+    "exact_end_selected": 0.021277006172839504
+   }
+  ],
+  "seed_events": [],
+  "best_iter": 30,
+  "final_iterate_exact_raw": 0.013603395061728396,
+  "final_iterate_exact_selected": 0.021277006172839504,
+  "best_intermediate_exact": 0.021277006172839504,
+  "n_validations": 4,
+  "validation_time_s": 445.1911923610023,
+  "wall_clock_s": 513.4641200479819,
+  "optimizer_time_s": 68.27292821800802
+ },
+ "n_training": 40
+}

@@ -1,0 +1,143 @@
+{
+ "candidate": "full_d18/start0_nominal",
+ "selected": false,
+ "criterion": "docs/phase8_report.md \u00a78.7(b) amended for D18, operational form in docs/phase9_report.md \u00a79.5",
+ "task": "fixed physical (SPEC \u00a72)",
+ "row": {
+  "primary": {
+   "full_mean": 0.021507040895061728,
+   "full_sd_configs": 0.0017453031691770859,
+   "full_values": [
+    0.020542534722222224,
+    0.02002170138888889,
+    0.023956886574074073
+   ],
+   "full_K_T": [
+    0.0006979166666666667,
+    0.0006458333333333333,
+    0.00075
+   ],
+   "full_K_SO3": [
+    0.004069010416666667,
+    0.004069010416666667,
+    0.004937065972222222
+   ],
+   "per_seed_score_sd": [
+    0.01012982390792979,
+    0.009327431307937123,
+    0.01170330417962787
+   ],
+   "two_mean": 0.1746651133040936,
+   "two_sd_configs": 0.004921711107982083,
+   "two_values": [
+    0.18132172880116962,
+    0.16957556652046785,
+    0.1730980445906433
+   ],
+   "n_seeds_3": [
+    12,
+    12,
+    12
+   ],
+   "n_seeds_2": [
+    16,
+    16,
+    16
+   ],
+   "configs": [
+    "default",
+    "sobol512_rs7",
+    "lin7_rs13"
+   ]
+  },
+  "eligibility": {
+   "eligible": true,
+   "reasons": []
+  },
+  "robustness": {
+   "n_seeds": 12,
+   "min_capacity": 0.0,
+   "capacity_ok": false,
+   "frac_seeds_ge_1": 0.8333333333333334,
+   "sweep": {
+    "stall": 0.02084394290123457,
+    "primary": 0.020542534722222224,
+    "continuous": 0.01113184799382716,
+    "heavy": 0.019013310185185185,
+    "heavy_seeds_hold": 10,
+    "seeds": 12,
+    "continuous_seeds_hold": 8,
+    "mass_retention": 0.9255581378970349
+   },
+   "mass_ok": true,
+   "ok": false
+  },
+  "agreement": {
+   "per_controller": {
+    "position": {
+     "baseline_two_finger_fp": 0.18507462686567167,
+     "candidate_three_contact_fp": 0.7845117845117845,
+     "candidate_two_finger_fp": null,
+     "candidate_three_contact_valid": 297,
+     "ok": false
+    },
+    "force": {
+     "baseline_two_finger_fp": 0.18208955223880596,
+     "candidate_three_contact_fp": 0.6734006734006734,
+     "candidate_two_finger_fp": null,
+     "candidate_three_contact_valid": 297,
+     "ok": false
+    }
+   },
+   "ok": false,
+   "evaluated": true
+  },
+  "admissibility": {
+   "admissible": true,
+   "min_base_separation_m": 0.040273399738364975,
+   "max_reach_m": 0.1170176017496854,
+   "base_separations": {
+    "index-middle": 0.040273399738364975,
+    "index-thumb": 0.04285902629524388,
+    "middle-thumb": 0.0808564141034139
+   },
+   "reaches": {
+    "index": 0.10518571488039957,
+    "middle": 0.10507886556623446,
+    "thumb": 0.1170176017496854
+   },
+   "violations": [],
+   "min_sep_required_m": 0.0241,
+   "reach_max_m": 0.25
+  },
+  "official": {
+   "physical_allfinger": 0.01758375,
+   "physical_pair": 0.01775,
+   "published_allfinger_KaRMA_T": 0.023583
+  }
+ },
+ "decision": {
+  "candidates": [
+   "armB",
+   "armAprime/start6_sobol9_s0.5",
+   "full_d18/start0_nominal"
+  ],
+  "how_chosen": {
+   "armAprime_by_published_KaRMA_T": "armAprime/start6_sobol9_s0.5",
+   "full_d18_by_primary": "full_d18/start0_nominal"
+  },
+  "passing": [],
+  "selected": null,
+  "runner_up": null,
+  "tie": false,
+  "note": "no candidate meets eligibility, robustness and simulation agreement; nothing is selected (criterion not loosened)",
+  "two_finger_cost": {
+   "design": "full_d18/start0_nominal",
+   "its_two_score": 0.1746651133040936,
+   "best_two_score": 0.23738837110136454,
+   "best_two_design": "armAprime/start6_sobol9_s0.5",
+   "best_armAprime_two_score": 0.23738837110136454,
+   "best_armAprime_two_design": "armAprime/start6_sobol9_s0.5"
+  }
+ }
+}

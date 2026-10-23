@@ -1,0 +1,337 @@
+{
+ "design": "full_d18/start31_sobol41_s0.25",
+ "criterion_v2": "docs/phase10_report.md P10.4 (SPEC \u00a716 item 12; frozen 2026-10-14 15:50 EDT, subject to the owner's review)",
+ "original_criterion": "docs/phase9_report.md \u00a79.5 (unchanged)",
+ "task": "fixed physical (SPEC \u00a72)",
+ "thresholds": {
+  "R2_min_task": 6,
+  "R3_reference": "start/start0_nominal",
+  "R5_reference_fp": 0.23931623931623935,
+  "R5_min_valid": 10,
+  "R4": {
+   "graceful_mass_retention": 0.5
+  }
+ },
+ "v2_row": {
+  "R1": true,
+  "R1_reasons": [],
+  "R2": true,
+  "n_task": {
+   "default": 12,
+   "sobol512_rs7": 11,
+   "lin7_rs13": 12
+  },
+  "R3": true,
+  "full_task_mean": 0.024075389309764304,
+  "full_task_sd": 0.0024085229869936164,
+  "full_all_mean": 0.023678948045267486,
+  "R3_reference": 0.01963362161351166,
+  "R4": true,
+  "sweep": {
+   "stall": 0.02293161651234568,
+   "primary": 0.02293161651234568,
+   "continuous": 0.01662326388888889,
+   "heavy": 0.02293161651234568,
+   "heavy_seeds_hold": 12,
+   "seeds": 12,
+   "continuous_seeds_hold": 10,
+   "mass_retention": 1.0
+  },
+  "R5": true,
+  "compliant_three_contact": {
+   "seeds_hold": 12,
+   "exactly_valid": 386,
+   "fp_strict": 0.06735751295336789
+  },
+  "R5_reference": 0.23931623931623935,
+  "n_task_mean": 11.666666666666666,
+  "passes": true
+ },
+ "v2_decision": {
+  "passing": [
+   "full_d18/start0_nominal",
+   "full_d18/start31_sobol41_s0.25"
+  ],
+  "selected": "full_d18/start31_sobol41_s0.25",
+  "tie": true,
+  "note": "S_task Full scores within the seed-configuration spread; mean |S_task| decided",
+  "runner_up": "full_d18/start0_nominal",
+  "gap": 9.03128507294404e-06,
+  "spread": 0.0027997632288145145,
+  "ranked": [
+   "full_d18/start31_sobol41_s0.25",
+   "full_d18/start0_nominal"
+  ]
+ },
+ "original_criterion_row": {
+  "primary": {
+   "full_mean": 0.02367894804526749,
+   "full_sd_configs": 0.001859789184760557,
+   "full_values": [
+    0.02293161651234568,
+    0.026236496913580244,
+    0.021868730709876542
+   ],
+   "full_K_T": [
+    0.0006354166666666666,
+    0.00071875,
+    0.0006979166666666667
+   ],
+   "full_K_SO3": [
+    0.004973234953703704,
+    0.005714699074074073,
+    0.004466869212962962
+   ],
+   "per_seed_score_sd": [
+    0.008810120848110016,
+    0.00810620037804963,
+    0.006785854089141157
+   ],
+   "two_mean": 0.27667473806042886,
+   "two_sd_configs": 0.01935062292723424,
+   "two_values": [
+    0.25653051900584795,
+    0.27070540935672516,
+    0.3027882858187134
+   ],
+   "n_seeds_3": [
+    12,
+    12,
+    12
+   ],
+   "n_seeds_2": [
+    16,
+    16,
+    16
+   ],
+   "configs": [
+    "default",
+    "sobol512_rs7",
+    "lin7_rs13"
+   ]
+  },
+  "eligibility": {
+   "eligible": true,
+   "reasons": []
+  },
+  "robustness": {
+   "n_seeds": 12,
+   "min_capacity": 1.9213946841671363,
+   "capacity_ok": true,
+   "frac_seeds_ge_1": 1.0,
+   "sweep": {
+    "stall": 0.02293161651234568,
+    "primary": 0.02293161651234568,
+    "continuous": 0.01662326388888889,
+    "heavy": 0.02293161651234568,
+    "heavy_seeds_hold": 12,
+    "seeds": 12,
+    "continuous_seeds_hold": 10,
+    "mass_retention": 1.0
+   },
+   "mass_ok": true,
+   "ok": true
+  },
+  "agreement": {
+   "per_controller": {
+    "position": {
+     "baseline_two_finger_fp": 0.18507462686567167,
+     "candidate_three_contact_fp": 0.4870466321243523,
+     "candidate_two_finger_fp": null,
+     "candidate_three_contact_valid": 386,
+     "ok": false
+    },
+    "force": {
+     "baseline_two_finger_fp": 0.18208955223880596,
+     "candidate_three_contact_fp": 0.44041450777202074,
+     "candidate_two_finger_fp": null,
+     "candidate_three_contact_valid": 386,
+     "ok": false
+    }
+   },
+   "ok": false,
+   "evaluated": true
+  },
+  "passes": false
+ },
+ "original_criterion_decision": {
+  "passing": [],
+  "selected": null
+ },
+ "two_finger_cost": {
+  "design": "full_d18/start31_sobol41_s0.25",
+  "its_two_score": 0.27667473806042886,
+  "best_two_score": 0.3255978923001949,
+  "best_two_design": "armAprime/start16_sobol22_s0.25",
+  "best_armAprime_two_score": 0.3255978923001949,
+  "best_armAprime_two_design": "armAprime/start16_sobol22_s0.25"
+ },
+ "endpoint_10_2": {
+  "E_default": 45.0,
+  "E_sobol512_rs7": 45.0,
+  "E_rigid": 26.833333333333332
+ },
+ "stask_10_3": {
+  "origin": "workspace/phase10/10.2/suite/full_d18__start31_sobol41_s0.25/suite.json",
+  "per_config": {
+   "default": {
+    "n_found": 12,
+    "n_task": 12,
+    "frac_found": 1.0,
+    "frac_budget": 1.0,
+    "s_task": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ],
+    "alpha_min": [
+     3.4605274125696197,
+     3.4651626865560585,
+     2.373466787933191,
+     2.755335257230569,
+     2.069180203959335,
+     1.9213946841671363,
+     2.4115360649095092,
+     3.3527070291119427,
+     4.398216780697296,
+     2.9255094329442803,
+     3.958671869641385,
+     3.7420997011438732
+    ],
+    "full_all": 0.022931616512345678,
+    "full_task": 0.022931616512345678
+   },
+   "sobol512_rs7": {
+    "n_found": 12,
+    "n_task": 11,
+    "frac_found": 0.9166666666666666,
+    "frac_budget": 0.9166666666666666,
+    "s_task": [
+     0,
+     1,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ],
+    "alpha_min": [
+     5.084573939980807,
+     4.432280276717389,
+     0.25713580131383923,
+     2.7007804466948024,
+     2.373466787933191,
+     2.755335257230569,
+     2.069180203959335,
+     4.015645992760023,
+     4.900706557899646,
+     1.9213946841671363,
+     3.652507543898536,
+     2.1651924365105786
+    ],
+    "full_all": 0.02623649691358024,
+    "full_task": 0.0274258207070707
+   },
+   "lin7_rs13": {
+    "n_found": 12,
+    "n_task": 12,
+    "frac_found": 1.0,
+    "frac_budget": 1.0,
+    "s_task": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ],
+    "alpha_min": [
+     3.9856002698996935,
+     3.2000144052835733,
+     2.373466787933191,
+     2.755335257230569,
+     1.9213946841671363,
+     2.4115360649095092,
+     3.3527070291119427,
+     2.9255094329442803,
+     3.958671869641385,
+     4.050657900287987,
+     2.4590001458163653,
+     1.0112030147124451
+    ],
+    "full_all": 0.02186873070987654,
+    "full_task": 0.02186873070987654
+   }
+  },
+  "endpoint": {
+   "default": {
+    "E_all": 45.0,
+    "E_task_per_robust": 45.0,
+    "E_task_per_budget": 45.0,
+    "n_matched": 12,
+    "n_export_seeds": 12,
+    "export_seeds_in_task": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ]
+   },
+   "sobol512_rs7": {
+    "E_all": 45.0,
+    "E_task_per_robust": 49.09090909090909,
+    "E_task_per_budget": 45.0,
+    "n_matched": 12,
+    "n_export_seeds": 12,
+    "export_seeds_in_task": [
+     0,
+     1,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ]
+   }
+  },
+  "mean_over_configs": {
+   "full_all": 0.023678948045267486,
+   "full_task": 0.024075389309764304,
+   "full_task_sd": 0.0024085229869936164,
+   "n_task": 11.666666666666666,
+   "n_task_min": 11
+  }
+ },
+ "provenance": "docs/phase10_report.md \u00a710.2-10.4; workspace/phase10/10.4/selection_v2.json"
+}

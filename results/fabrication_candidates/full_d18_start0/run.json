@@ -1,0 +1,97 @@
+{
+ "arm": "full_d18",
+ "start": "start0_nominal",
+ "wall_s": 739.5692412109929,
+ "optimizer_time_s": 68.27292821800802,
+ "validation_time_s": 445.1911923610023,
+ "best_validation": {
+  "admissible": true,
+  "min_base_separation_m": 0.040273399738364975,
+  "max_reach_m": 0.1170176017496854,
+  "n_seeds": 6,
+  "exact_K_T": 0.0007291666666666666,
+  "exact_K_R": 0.004195601851851851,
+  "exact_score": 0.021277006172839504
+ },
+ "best_iter": 30,
+ "n_nonfinite": 0,
+ "n_clipped": 1,
+ "validation_history": [
+  {
+   "iter": 10,
+   "stage": 0,
+   "tag": "periodic",
+   "validation": {
+    "admissible": true,
+    "min_base_separation_m": 0.03446899452109489,
+    "max_reach_m": 0.11910157738309765,
+    "n_seeds": 6,
+    "exact_K_T": 0.000375,
+    "exact_K_R": 0.002459490740740741,
+    "exact_score": 0.011948302469135802
+   }
+  },
+  {
+   "iter": 20,
+   "stage": 0,
+   "tag": "periodic",
+   "validation": {
+    "admissible": true,
+    "min_base_separation_m": 0.03580218316970754,
+    "max_reach_m": 0.12068643242563626,
+    "n_seeds": 6,
+    "exact_K_T": 0.0004583333333333333,
+    "exact_K_R": 0.0030020254629629633,
+    "exact_score": 0.014590084876543211
+   }
+  },
+  {
+   "iter": 30,
+   "stage": 1,
+   "tag": "periodic",
+   "validation": {
+    "admissible": true,
+    "min_base_separation_m": 0.040273399738364975,
+    "max_reach_m": 0.1170176017496854,
+    "n_seeds": 6,
+    "exact_K_T": 0.0007291666666666666,
+    "exact_K_R": 0.004195601851851851,
+    "exact_score": 0.021277006172839504
+   }
+  },
+  {
+   "iter": 40,
+   "stage": 1,
+   "tag": "stage_end",
+   "validation": {
+    "admissible": true,
+    "min_base_separation_m": 0.0410283864215928,
+    "max_reach_m": 0.11369070233431953,
+    "n_seeds": 6,
+    "exact_K_T": 0.0003958333333333333,
+    "exact_K_R": 0.002893518518518519,
+    "exact_score": 0.013603395061728396
+   }
+  }
+ ],
+ "admissibility": {
+  "admissible": true,
+  "min_base_separation_m": 0.040273399738364975,
+  "max_reach_m": 0.1170176017496854,
+  "base_separations": {
+   "index-middle": 0.040273399738364975,
+   "index-thumb": 0.04285902629524388,
+   "middle-thumb": 0.0808564141034139
+  },
+  "reaches": {
+   "index": 0.10518571488039957,
+   "middle": 0.10507886556623446,
+   "thumb": 0.1170176017496854
+  },
+  "violations": [],
+  "min_sep_required_m": 0.0241,
+  "reach_max_m": 0.25
+ },
+ "kkt_method": "reduced",
+ "n_evaluations": 40
+}

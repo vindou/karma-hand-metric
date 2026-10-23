@@ -1,0 +1,12 @@
+servo: XL330-M077-T
+stall_torque_nm: 0.215
+torque_limit_nm: 0.108
+torque_limit_basis: 0.5 x stall at 5 V, intermittent duty; replace with measured joint-side
+  curve
+transmission_efficiency_assumed: 1.0
+include_link_gravity: true
+link_mass_kg: 0.028
+terminal_link_mass_kg: 0.01
+ablations:
+  continuous: 0.043
+  stall: 0.215

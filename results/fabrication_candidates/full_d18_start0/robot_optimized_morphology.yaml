@@ -1,0 +1,36 @@
+robot_name: optimized_morphology
+urdf_path: optimized_morphology.urdf
+base_link: palm
+fingers:
+  thumb:
+    active_joints:
+    - thumb_j0
+    - thumb_j1
+    - thumb_j2
+    - thumb_j3
+    contact_links:
+    - thumb_l3
+    - thumb_l2
+    - thumb_l1
+    - thumb_l0
+  index:
+    active_joints:
+    - index_j0
+    - index_j1
+    - index_j2
+    - index_j3
+    contact_links:
+    - index_l3
+    - index_l2
+    - index_l1
+    - index_l0
+seed:
+  thumb_link: thumb_l3
+  index_link: index_l3
+links:
+  thumb_l3:
+    tip_length_m: 0.027103183989756967
+  index_l3:
+    tip_length_m: 0.027107634128553437
+  middle_l3:
+    tip_length_m: 0.025500614682265953

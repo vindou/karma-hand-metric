@@ -1,0 +1,16 @@
+{
+ "best_validation": {
+  "n_seeds": 6,
+  "exact_K_T": 0.00025,
+  "exact_K_R": 0.002242476851851852,
+  "exact_score": 0.009974922839506174
+ },
+ "meta": {
+  "method": "adam",
+  "lr": 0.02,
+  "n_iters": 40,
+  "stages": 2,
+  "seed": 0
+ },
+ "n_training": 40
+}
