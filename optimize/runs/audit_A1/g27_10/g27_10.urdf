@@ -1,0 +1,116 @@
+<?xml version="1.0"?>
+<robot name="g27_10">
+  <link name="palm"/>
+  <joint name="thumb_j0" type="revolute">
+    <origin xyz="-0.021927620 -0.019993342 -0.017614116" rpy="-2.006517507 0.819353318 0.578512924"/>
+    <parent link="palm"/>
+    <child link="thumb_l0"/>
+    <axis xyz="0.286671546 -0.693081121 0.661406067"/>
+    <limit lower="-1.226310" upper="0.731140" effort="1" velocity="1"/>
+  </joint>
+  <link name="thumb_l0">
+    <inertial>
+      <origin xyz="0.006015233 0 0" rpy="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+    </inertial>
+  </link>
+  <joint name="thumb_j1" type="revolute">
+    <origin xyz="0.012030466 0.000000000 0.000000000" rpy="0.000000000 0.000000000 0.000000000"/>
+    <parent link="thumb_l0"/>
+    <child link="thumb_l1"/>
+    <axis xyz="-0.151587635 0.987365905 0.046149309"/>
+    <limit lower="-0.422912" upper="1.281041" effort="1" velocity="1"/>
+  </joint>
+  <link name="thumb_l1">
+    <inertial>
+      <origin xyz="0.008658497 0 0" rpy="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+    </inertial>
+  </link>
+  <joint name="thumb_j2" type="revolute">
+    <origin xyz="0.017316995 0.000000000 0.000000000" rpy="0.000000000 0.000000000 0.000000000"/>
+    <parent link="thumb_l1"/>
+    <child link="thumb_l2"/>
+    <axis xyz="-0.405813768 0.337293184 0.849440106"/>
+    <limit lower="-0.389182" upper="1.078032" effort="1" velocity="1"/>
+  </joint>
+  <link name="thumb_l2">
+    <inertial>
+      <origin xyz="0.010644824 0 0" rpy="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+    </inertial>
+  </link>
+  <joint name="thumb_j3" type="revolute">
+    <origin xyz="0.021289648 0.000000000 0.000000000" rpy="0.000000000 0.000000000 0.000000000"/>
+    <parent link="thumb_l2"/>
+    <child link="thumb_l3"/>
+    <axis xyz="0.251160049 0.538034388 0.804635090"/>
+    <limit lower="-0.290836" upper="1.025786" effort="1" velocity="1"/>
+  </joint>
+  <link name="thumb_l3">
+    <inertial>
+      <origin xyz="0.022761245 0 0" rpy="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+    </inertial>
+  </link>
+  <joint name="index_j0" type="revolute">
+    <origin xyz="0.000000000 0.000000000 0.000000000" rpy="0.000000000 0.000000000 0.000000000"/>
+    <parent link="palm"/>
+    <child link="index_l0"/>
+    <axis xyz="0.542514434 -0.755692370 0.366888445"/>
+    <limit lower="-0.751103" upper="1.156914" effort="1" velocity="1"/>
+  </joint>
+  <link name="index_l0">
+    <inertial>
+      <origin xyz="0.008211489 0 0" rpy="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+    </inertial>
+  </link>
+  <joint name="index_j1" type="revolute">
+    <origin xyz="0.016422978 0.000000000 0.000000000" rpy="0.000000000 0.000000000 0.000000000"/>
+    <parent link="index_l0"/>
+    <child link="index_l1"/>
+    <axis xyz="0.243081827 0.464615158 0.851495144"/>
+    <limit lower="-0.351835" upper="1.095346" effort="1" velocity="1"/>
+  </joint>
+  <link name="index_l1">
+    <inertial>
+      <origin xyz="0.019241098 0 0" rpy="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+    </inertial>
+  </link>
+  <joint name="index_j2" type="revolute">
+    <origin xyz="0.038482196 0.000000000 0.000000000" rpy="0.000000000 0.000000000 0.000000000"/>
+    <parent link="index_l1"/>
+    <child link="index_l2"/>
+    <axis xyz="0.773929416 0.632664549 0.027727757"/>
+    <limit lower="-0.261841" upper="0.876619" effort="1" velocity="1"/>
+  </joint>
+  <link name="index_l2">
+    <inertial>
+      <origin xyz="0.009217289 0 0" rpy="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+    </inertial>
+  </link>
+  <joint name="index_j3" type="revolute">
+    <origin xyz="0.018434577 0.000000000 0.000000000" rpy="0.000000000 0.000000000 0.000000000"/>
+    <parent link="index_l2"/>
+    <child link="index_l3"/>
+    <axis xyz="0.444520930 0.703862960 -0.554056022"/>
+    <limit lower="-0.792818" upper="1.225996" effort="1" velocity="1"/>
+  </joint>
+  <link name="index_l3">
+    <inertial>
+      <origin xyz="0.013330124 0 0" rpy="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+    </inertial>
+  </link>
+</robot>

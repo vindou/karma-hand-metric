@@ -1,0 +1,72 @@
+thumb: knuckle xyz = [-2.8, -22.9, -2.5] mm, rotvec = [-3.137, -0.071, 1.192] rad, wire = 115.1 mm
+   j0: axis = (+0.58,-0.80,-0.16) [oblique], limits = [-62, 33] deg, link = 12.6 mm
+   j1: axis = (+0.52,+0.60,+0.61) [oblique], limits = [-59, 74] deg, link = 12.1 mm
+   j2: axis = (-0.85,+0.48,+0.22) [oblique], limits = [-36, 59] deg, link = 17.6 mm
+   j3: axis = (-0.21,+0.98,+0.04) [flex/abd], limits = [-58, 55] deg, tip = 72.9 mm
+index: knuckle xyz = [0.0, 0.0, 0.0] mm, rotvec = [0.0, 0.0, 0.0] rad, wire = 100.0 mm
+   j0: axis = (+0.35,-0.74,+0.57) [oblique], limits = [-62, 65] deg, link = 7.1 mm
+   j1: axis = (+0.37,+0.70,+0.61) [oblique], limits = [-74, 73] deg, link = 25.9 mm
+   j2: axis = (+0.24,+0.96,-0.16) [flex/abd], limits = [-48, 56] deg, link = 20.2 mm
+   j3: axis = (+0.01,-0.23,-0.97) [flex/abd], limits = [-40, 75] deg, tip = 46.8 mm
+{
+  "robot": "opt_A1",
+  "L_ref_mm": 130.7,
+  "mxPr_mm": 23.2,
+  "mF_mm": 107.6,
+  "n_voxels": 3653,
+  "KaRMA_T": 0.44925,
+  "KaRMA_R": 0.29386,
+  "KaRMA_S": 0.5894,
+  "best_voxels": 3653,
+  "median_voxels": 2153,
+  "n_seeds": 212,
+  "ensemble_t": [
+    3653.0,
+    3621.0,
+    3508.0
+  ],
+  "ensemble_r": [
+    0.2991,
+    0.2974,
+    0.2851
+  ],
+  "runtime_s": 104.2,
+  "sphere_radius_mm": 6.54,
+  "backend": "jax/fp32"
+}
+
+  Hand                    L_ref  Voxels   KaRMA-T   KaRMA-R  KaRMA-S
+  ---------------------- ------ ------- --------- --------- --------
+* opt_A1                  130.7    3653   0.44925    0.2939    0.589
+  leap                    249.4     792   0.09692    0.3038    0.448
+  allegro                 222.5     445   0.05467    0.3348    0.542
+  dclaw                   327.2     315   0.03642    0.2307    0.225
+  sharpa                  188.3     290   0.03404    0.2471    0.369
+  wuji                    176.6     310   0.03392    0.2333    0.352
+  shadowhand              184.8     110   0.01312    0.1605    0.209
+  ARMS_skel               171.3      96   0.01179    0.1494    0.344
+  dex5                    185.9      77   0.00925    0.1731    0.195
+  DLR                     204.5      72   0.00808    0.1585    0.556
+  dex3                    155.3      34   0.00404    0.0944    0.059
+  xhand1                  190.8      32   0.00346    0.0974    0.094
+  orcahand                168.9      25   0.00287    0.1368    0.320
+  xhandlite               170.0      17   0.00204    0.0614    0.059
+  inspire                 155.4       4   0.00042    0.0044    0.250
+  svh                     182.9       3   0.00038    0.0102    0.333
+  ability_hand_right      158.9       3   0.00029    0.0044    0.333
+  (* = this exercise; published rows from results/16_hand_batch/summary.yaml)
+
+wrote optimize/runs/A1/final/hand.png
+wrote optimize/runs/A1/progress.png
+thumb: knuckle xyz = [-2.8, -22.9, -2.5] mm, rotvec = [-3.137, -0.071, 1.192] rad, wire = 115.1 mm
+   j0: axis = (+0.58,-0.80,-0.16) [oblique], limits = [-62, 33] deg, link = 12.6 mm
+   j1: axis = (+0.52,+0.60,+0.61) [oblique], limits = [-59, 74] deg, link = 12.1 mm
+   j2: axis = (-0.85,+0.48,+0.22) [oblique], limits = [-36, 59] deg, link = 17.6 mm
+   j3: axis = (-0.21,+0.98,+0.04) [flex/abd], limits = [-58, 55] deg, tip = 72.9 mm
+index: knuckle xyz = [0.0, 0.0, 0.0] mm, rotvec = [0.0, 0.0, 0.0] rad, wire = 100.0 mm
+   j0: axis = (+0.35,-0.74,+0.57) [oblique], limits = [-62, 65] deg, link = 7.1 mm
+   j1: axis = (+0.37,+0.70,+0.61) [oblique], limits = [-74, 73] deg, link = 25.9 mm
+   j2: axis = (+0.24,+0.96,-0.16) [flex/abd], limits = [-48, 56] deg, link = 20.2 mm
+   j3: axis = (+0.01,-0.23,-0.97) [flex/abd], limits = [-40, 75] deg, tip = 46.8 mm
+seeds: 18, cloud voxels: 2500  (105s)
+wrote optimize/runs/A1/best_design/best.png

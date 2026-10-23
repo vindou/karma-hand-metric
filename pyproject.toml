@@ -39,3 +39,7 @@ Repository = "https://github.com/mfpeticco/karma-hand-metric"
 
 [tool.setuptools]
 packages = ["karma", "baselines", "robust_tests"]
+
+# marimo (optimize/explore.py): the animated Plotly figures are 10-30 MB of frames
+[tool.marimo.runtime]
+output_max_bytes = 120_000_000

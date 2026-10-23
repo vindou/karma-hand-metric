@@ -1,0 +1,59 @@
+thumb: knuckle xyz = [-2.7, -15.4, -0.4] mm, rotvec = [-1.017, -0.417, -0.523] rad, wire = 103.8 mm
+   j0: axis = (+0.48,-0.55,-0.68) [oblique], limits = [-58, 75] deg, link = 14.5 mm
+   j1: axis = (-0.60,-0.51,+0.62) [oblique], limits = [-32, 37] deg, link = 15.4 mm
+   j2: axis = (-0.47,+0.80,+0.37) [oblique], limits = [-50, 68] deg, link = 12.7 mm
+   j3: axis = (-0.48,-0.09,-0.87) [oblique], limits = [-60, 56] deg, tip = 61.2 mm
+index: knuckle xyz = [0.0, 0.0, 0.0] mm, rotvec = [0.0, 0.0, 0.0] rad, wire = 100.0 mm
+   j0: axis = (+0.08,+0.95,-0.31) [flex/abd], limits = [-71, 73] deg, link = 4.6 mm
+   j1: axis = (+0.36,+0.25,+0.90) [oblique], limits = [-74, 71] deg, link = 41.1 mm
+   j2: axis = (+0.42,-0.08,-0.90) [oblique], limits = [-68, 75] deg, link = 10.8 mm
+   j3: axis = (+0.01,-0.02,-1.00) [flex/abd], limits = [-22, 75] deg, tip = 43.6 mm
+{
+  "robot": "opt_T",
+  "L_ref_mm": 117.5,
+  "mxPr_mm": 15.6,
+  "mF_mm": 101.9,
+  "n_voxels": 4648,
+  "KaRMA_T": 0.574958,
+  "KaRMA_R": 0.276608,
+  "KaRMA_S": 0.7948,
+  "best_voxels": 4648,
+  "median_voxels": 3694,
+  "n_seeds": 193,
+  "ensemble_t": [
+    4648.0,
+    4608.0,
+    4543.0
+  ],
+  "ensemble_r": [
+    0.2904,
+    0.2825,
+    0.257
+  ],
+  "runtime_s": 3143.9,
+  "sphere_radius_mm": 5.87
+}
+
+  Hand                    L_ref  Voxels   KaRMA-T   KaRMA-R  KaRMA-S
+  ---------------------- ------ ------- --------- --------- --------
+* opt_T                   117.5    4648   0.57496    0.2766    0.795
+  leap                    249.4     792   0.09692    0.3038    0.448
+  allegro                 222.5     445   0.05467    0.3348    0.542
+  dclaw                   327.2     315   0.03642    0.2307    0.225
+  sharpa                  188.3     290   0.03404    0.2471    0.369
+  wuji                    176.6     310   0.03392    0.2333    0.352
+  shadowhand              184.8     110   0.01312    0.1605    0.209
+  ARMS_skel               171.3      96   0.01179    0.1494    0.344
+  dex5                    185.9      77   0.00925    0.1731    0.195
+  DLR                     204.5      72   0.00808    0.1585    0.556
+  dex3                    155.3      34   0.00404    0.0944    0.059
+  xhand1                  190.8      32   0.00346    0.0974    0.094
+  orcahand                168.9      25   0.00287    0.1368    0.320
+  xhandlite               170.0      17   0.00204    0.0614    0.059
+  inspire                 155.4       4   0.00042    0.0044    0.250
+  svh                     182.9       3   0.00038    0.0102    0.333
+  ability_hand_right      158.9       3   0.00029    0.0044    0.333
+  (* = this exercise; published rows from results/16_hand_batch/summary.yaml)
+
+wrote optimize/runs/T/final/hand.png
+wrote optimize/runs/T/progress.png

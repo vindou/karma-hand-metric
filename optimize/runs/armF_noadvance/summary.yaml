@@ -1,0 +1,24 @@
+variant: noadvance
+backend: reference
+timestamp: '2026-10-10T19:18:12.335363'
+rows:
+- robot: shadowhand
+  L_ref_mm: 195.4
+  n_voxels: 106
+  KaRMA_T: 0.012458
+  KaRMA_R: 0.149123
+  KaRMA_S: 0.1887
+  best_voxels: 106
+  median_voxels: 20
+  n_seeds: 591
+  runtime_s: 118.5
+- robot: svh
+  L_ref_mm: 210.5
+  n_voxels: 5
+  KaRMA_T: 0.000458
+  KaRMA_R: 0.009747
+  KaRMA_S: 0.2
+  best_voxels: 5
+  median_voxels: 1
+  n_seeds: 802
+  runtime_s: 21.9

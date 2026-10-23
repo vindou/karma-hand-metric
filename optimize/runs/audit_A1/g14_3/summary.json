@@ -1,0 +1,43 @@
+{
+  "robot": "g14_3",
+  "L_ref_mm": 137.7,
+  "mxPr_mm": 41.4,
+  "mF_mm": 96.3,
+  "n_voxels": 979,
+  "KaRMA_T": 0.122167,
+  "KaRMA_R": 0.238304,
+  "KaRMA_S": 0.712,
+  "best_voxels": 979,
+  "median_voxels": 697,
+  "n_seeds": 363,
+  "ensemble_t": [
+    979.0,
+    978.0,
+    975.0
+  ],
+  "ensemble_r": [
+    0.2526,
+    0.2298,
+    0.2325
+  ],
+  "runtime_s": 76.4,
+  "sphere_radius_mm": 6.88,
+  "backend": "jax/fp32",
+  "phase1_fail_reasons": {
+    "qp_fail": 1711,
+    "projection": 6,
+    "collision": 169,
+    "self_collision": 12,
+    "grasp": 172,
+    "duplicate_voxel": 1848
+  },
+  "phase2_fail_reasons": {
+    "rot_slip": 2556,
+    "rot_collision": 309,
+    "rot_low_eff": 137,
+    "rot_grasp": 829,
+    "rot_self_collision": 61,
+    "rot_qp_fail": 9,
+    "rot_projection": 3
+  }
+}

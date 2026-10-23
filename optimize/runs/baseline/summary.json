@@ -1,0 +1,39 @@
+{
+  "robot": "baseline_hand",
+  "L_ref_mm": 154.7,
+  "mxPr_mm": 47.2,
+  "mF_mm": 107.5,
+  "n_voxels": 243,
+  "KaRMA_T": 0.028542,
+  "KaRMA_R": 0.229532,
+  "KaRMA_S": 0.5185,
+  "best_voxels": 243,
+  "median_voxels": 126,
+  "n_seeds": 211,
+  "ensemble_t": [
+    243.0,
+    226.0,
+    216.0
+  ],
+  "ensemble_r": [
+    0.2588,
+    0.214,
+    0.2158
+  ],
+  "runtime_s": 196.3,
+  "phase1_fail_reasons": {
+    "qp_fail": 483,
+    "duplicate_voxel": 372,
+    "self_collision": 22,
+    "grasp": 84,
+    "collision": 11,
+    "projection": 2
+  },
+  "phase2_fail_reasons": {
+    "rot_grasp": 290,
+    "rot_slip": 419,
+    "rot_self_collision": 125,
+    "rot_collision": 94,
+    "rot_low_eff": 34
+  }
+}
