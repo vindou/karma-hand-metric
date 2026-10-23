@@ -23,11 +23,12 @@ METRIC_CFG = "karma_config.yaml"
 ROBOTS_DIR = Path("robots")
 
 
-def run_one(robot_cfg_path: str) -> dict:
+def run_one(robot_cfg_path: str, backend: str = "reference", precision: str = "fp32") -> dict:
+    from run_metric import run_backend
     cfg = load_config(METRIC_CFG, robot_cfg_path)
     ctx = load_robot(cfg.urdf_path, cfg)
     t0 = time.perf_counter()
-    result = compute_metric(cfg, ctx)
+    result = run_backend(cfg, ctx, backend, precision)
     elapsed = time.perf_counter() - t0
     sens = result.seed_sensitivity or {}
     return {
@@ -41,15 +42,21 @@ def run_one(robot_cfg_path: str) -> dict:
         "median_voxels": sens.get("median"),
         "n_seeds": sens.get("n_seeds_evaluated"),
         "runtime_s": round(elapsed, 1),
+        "backend": getattr(result, "backend", "reference"),
     }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Score all bundled hands with the shipped config "
-                    "(roughly 18 minutes on a 32-thread desktop).",
+                    "(roughly 18 minutes on a 32-thread desktop with the reference backend).",
     )
-    parser.parse_args()
+    parser.add_argument("--backend", choices=["jax", "reference"], default=None)
+    parser.add_argument("--precision", choices=["fp32", "fp64"], default="fp32")
+    args = parser.parse_args()
+    from run_metric import default_backend
+    backend = args.backend or default_backend()
+    print(f"Backend: {backend}" + (f" ({args.precision})" if backend == "jax" else ""))
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -66,7 +73,7 @@ def main() -> None:
     for i, rf in enumerate(robot_files, 1):
         print(f"\n[{i}/{len(robot_files)}] {rf.stem.replace('robot_', '')}")
         try:
-            r = run_one(str(rf))
+            r = run_one(str(rf), backend, args.precision)
             rows.append(r)
             s_str = f"{r['KaRMA_S']:.4f}" if r["KaRMA_S"] is not None else "-"
             print(f"  voxels={r['n_voxels']}  KaRMA-T={r['KaRMA_T']:.6f}  "

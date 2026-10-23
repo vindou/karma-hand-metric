@@ -75,6 +75,11 @@ class MetricResult:
     phase1_fail_reasons: dict[str, int] = field(default_factory=dict)
     phase2_fail_reasons: dict[str, int] = field(default_factory=dict)
 
+    # Which implementation produced this result ("reference" = numpy/Pinocchio/OSQP,
+    # "jax" = karma_jax on the default JAX device) and its search precision.
+    backend: str = "reference"
+    precision: str = "fp64"
+
 
 # ── Output ────────────────────────────────────────────────────────────────────
 
@@ -103,6 +108,8 @@ def write_outputs(cfg: MetricConfig, result: MetricResult) -> Path:
             "translational_volume_m3": float(result.translational_volume_m3),
             "l_ref_m": float(result.l_ref_m),
             "global_rotational_score": float(result.global_rotational_score),
+            "backend": getattr(result, "backend", "reference"),
+            "precision": getattr(result, "precision", "fp64"),
         },
         "seed_sensitivity": result.seed_sensitivity if result.seed_sensitivity else {},
         "seed": {

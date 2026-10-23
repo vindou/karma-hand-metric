@@ -19,6 +19,7 @@ import math
 import shutil
 import sys
 import tempfile
+import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -118,11 +119,19 @@ def run_metric(metric_cfg_path: str, robot_cfg_path: str, max_states: int | None
     mv = max_states or cfg.max_states
 
     t0 = time.perf_counter()
-    result = compute_metric(
-        cfg, ctx,
-        max_voxels=mv,
-        n_rotation_workers=cfg.rotation_workers,
-    )
+    backend = os.environ.get("KARMA_BACKEND", "reference")
+    if backend == "jax":
+        # Same harness on the JAX backend: KARMA_BACKEND=jax [KARMA_PRECISION=fp32|fp64]
+        from karma_jax.model import build_flat_model
+        from karma_jax.metric import compute_metric as compute_metric_jax
+        result = compute_metric_jax(cfg, build_flat_model(ctx, cfg), max_voxels=mv,
+                                    precision=os.environ.get("KARMA_PRECISION", "fp32"))
+    else:
+        result = compute_metric(
+            cfg, ctx,
+            max_voxels=mv,
+            n_rotation_workers=cfg.rotation_workers,
+        )
     elapsed = time.perf_counter() - t0
     return extract_scores(result), elapsed
 
