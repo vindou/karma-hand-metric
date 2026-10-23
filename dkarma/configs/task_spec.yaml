@@ -1,0 +1,41 @@
+# SPEC.md section 2.1: the frozen physical task. Everything in SI; identical for every design.
+# `actuation` is consumed from Phase 4 on (Act-KaRMA); `object`, `task`, `orientation` from Phase 1.
+actuation:
+  model: joint_side_constant_torque
+  servo: XL330-M077-T
+  supply_voltage_v: 5.0
+  stall_torque_nm: 0.215
+  torque_limit_nm: 0.108                       # primary; ablations use 0.043 and 0.215
+  torque_limit_basis: "0.5 x stall at 5 V, intermittent duty; replace with measured joint-side curve"
+  transmission: direct_drive
+  transmission_efficiency_assumed: 1.0
+  include_link_gravity: true
+  link_mass_kg: 0.028                          # per non-terminal link, at the midpoint (estimate)
+  terminal_link_mass_kg: 0.010
+object:
+  radius_m: 0.015
+  mass_kg: 0.035
+  friction_coefficient: 0.6
+  gravity_m_s2: [0, 0, -9.81]                  # palm frame, palm facing up (D17); ablations rotate this vector
+task:
+  cube_side_m: 0.200
+  grid_m: 0.010
+  centre: nominal_grasp_sphere_centre
+orientation:
+  pinch_axis_bins: 228                         # two-finger, as the reference (HEALPix nside 6, antipodal)
+  so3_targets_smooth: 576                      # Hopf grid level 1, sigma_R = 0.15 rad (D16)
+  sigma_r_rad: 0.15
+  so3_bins_exact: 4608                         # Hopf grid level 2
+rolling:
+  # Fixed physical tolerances of the rolling evaluator (SPEC.md §3.5: no L_ref scaling in dkarma).
+  # Values are the reference's nominal ones for a 200 mm hand (karma_config.yaml); the XL330-scale
+  # hands of this project are 200-250 mm, so they apply unscaled.
+  link_radius_m: 0.0118                        # capsule radius of every link
+  eps_g_m: 0.00035                             # contact-gap tolerance
+  eps_col_m: 0.0005                            # minimum clearance (object and self collision)
+  step_size_m: 0.00125                         # rolling sub-step; 8 per 10 mm task cell
+  slip_gate_m: 0.0005                          # tangential slip gate per sub-step (0.40 of the sub-step)
+  max_joint_step_deg: 10.0                     # per-joint cap per sub-step
+  qp_regularization: 1.0e-6                    # rolling QP damping (enters as reg / r_s^2)
+  rotation_step_rad: 0.15                      # Phase-2 tilt per rotation step
+  rotation_efficiency_min: 0.3                 # reference guard on rotation steps
