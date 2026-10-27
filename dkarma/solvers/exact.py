@@ -8,6 +8,11 @@ These kernels re-select the contact pair by nearest link with hysteresis, so a
 smooth rollout (fixed assignment) and the exact one can diverge where the
 reference would switch links; the outcome records the final pair so callers
 can tell those cases apart.
+
+``envelope`` (Phase 11, D19): the kernels apply one radius (``sp.link_radius``) to every capsule; with
+mixed radii a primitive also needs the kernels' gap, collision and self-collision gates to pass with each
+capsule's own radius at its end state (:func:`dkarma.core.contacts.reference_gates_per_capsule`), and a
+failure there takes the kernel's code for that gate. Off (the default), the programs are those of Phase 7-10.
 """
 from __future__ import annotations
 
@@ -18,11 +23,12 @@ import jax.numpy as jnp
 
 from karma_jax.qp import QPSettings, default_settings
 from karma_jax.rolling import StepParams
+from karma_jax.kinematics import forward_kinematics
 from karma_jax.steps import (GraspState as RefGraspState, attempt_primitive_step, rotation_step, Constraints,
-                             STEP_FAIL_NAMES, ROT_FAIL_NAMES)
+                             STEP_FAIL_NAMES, ROT_FAIL_NAMES, _STEP_CODES, _ROT_CODES)
 
 from ..core.morphology import HandModel
-from ..core.contacts import ContactAssignment
+from ..core.contacts import ContactAssignment, reference_gates_per_capsule
 from .rollout import GraspState
 
 
@@ -40,9 +46,16 @@ def _ref_state(state: GraspState, asg: ContactAssignment) -> RefGraspState:
     return RefGraspState(state.q, state.p, state.R, asg.caps[:2].astype(jnp.int32))
 
 
+def _envelope(hm: HandModel, ok, code, st: RefGraspState, sp: StepParams, codes: dict):
+    """``(ok, code)`` after the per-capsule gates at the kernel's accepted end state ``st``."""
+    g, c, s = reference_gates_per_capsule(hm, forward_kinematics(hm.dm, st.q), st.p, sp.sphere_radius, st.pair, sp.eps_g, sp.eps_col)
+    env = jnp.where(~g, codes["gap"], jnp.where(~c, codes["collision"], jnp.where(~s, codes["self_collision"], 0)))
+    return ok & (env == 0), jnp.where(ok & (env != 0), env, code)
+
+
 def validate_translation(hm: HandModel, state0: GraspState, dps, asg: ContactAssignment, sp: StepParams,
                          n_sub: int, qp_settings: QPSettings | None = None,
-                         cons: Constraints = Constraints()) -> ExactOutcome:
+                         cons: Constraints = Constraints(), envelope: bool = False) -> ExactOutcome:
     """``dps`` [H,3] sub-step displacements with ``H = K * n_sub``; each block of ``n_sub``
     is one reference primitive step (QP + projection per sub-step, gates at the end).
     Lanes stop at the first failed primitive (later entries repeat the last state)."""
@@ -55,6 +68,8 @@ def validate_translation(hm: HandModel, state0: GraspState, dps, asg: ContactAss
     def body(carry, dp_full):
         st, alive = carry
         out = attempt_primitive_step(hm.dm, st, dp_full, n_sub, sp, qp_settings, cons)
+        if envelope:
+            out = out._replace(**dict(zip(("ok", "code"), _envelope(hm, out.ok, out.code, out.state, sp, _STEP_CODES))))
         ok = alive & out.ok
         st_new = jax.tree_util.tree_map(lambda a, b: jnp.where(ok, a, b), out.state, st)
         code = jnp.where(alive, out.code, -1)
@@ -70,7 +85,7 @@ def validate_translation(hm: HandModel, state0: GraspState, dps, asg: ContactAss
 
 
 def validate_rotation(hm: HandModel, state0: GraspState, dthetas, asg: ContactAssignment, sp: StepParams,
-                      qp_settings: QPSettings | None = None, cons: Constraints = Constraints()) -> ExactOutcome:
+                      qp_settings: QPSettings | None = None, cons: Constraints = Constraints(), envelope: bool = False) -> ExactOutcome:
     """``dthetas`` [H,3] per-step rotation commands (the reference uses 0.15 rad tilts)."""
     if qp_settings is None:
         qp_settings = default_settings(state0.q.dtype)
@@ -78,6 +93,8 @@ def validate_rotation(hm: HandModel, state0: GraspState, dthetas, asg: ContactAs
     def body(carry, dth):
         st, alive = carry
         out = rotation_step(hm.dm, st, dth, sp, qp_settings, cons)
+        if envelope:
+            out = out._replace(**dict(zip(("ok", "code"), _envelope(hm, out.ok, out.code, out.state, sp, _ROT_CODES))))
         ok = alive & out.ok
         st_new = jax.tree_util.tree_map(lambda a, b: jnp.where(ok, a, b), out.state, st)
         code = jnp.where(alive, out.code, -1)

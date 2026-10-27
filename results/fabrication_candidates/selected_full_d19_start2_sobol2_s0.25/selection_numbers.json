@@ -1,0 +1,64 @@
+{
+ "candidate": "full_d19/start2_sobol2_s0.25",
+ "criterion": "docs/phase10_report.md P10.4 (SPEC \u00a716 item 12; frozen 2026-10-14 15:50 EDT, subject to the owner's review); applied as docs/phase11_report.md P11.5 (eligibility under D19)",
+ "task": "fixed physical (SPEC \u00a72); D19 box",
+ "row": {
+  "R1": true,
+  "R1_reasons": [],
+  "R2": true,
+  "n_task": {
+   "default": 10,
+   "sobol512_rs7": 11,
+   "lin7_rs13": 8
+  },
+  "R3": true,
+  "full_task_mean": 0.022387586805555557,
+  "full_task_sd": 0.0009039869826842107,
+  "full_all_mean": 0.021051793981481482,
+  "R3_reference": 0.01974215534979424,
+  "R4": true,
+  "sweep": {
+   "stall": 0.021994598765432097,
+   "primary": 0.021994598765432097,
+   "continuous": 0.0007508680555555556,
+   "heavy": 0.020163966049382715,
+   "heavy_seeds_hold": 11,
+   "seeds": 12,
+   "continuous_seeds_hold": 1,
+   "mass_retention": 0.9167689878968602
+  },
+  "R5": true,
+  "compliant_three_contact": {
+   "seeds_hold": 10,
+   "exactly_valid": 323,
+   "fp_strict": 0.09597523219814241
+  },
+  "R5_reference": 0.23931623931623935,
+  "n_task_mean": 9.666666666666666,
+  "passes": true
+ },
+ "decision": {
+  "passing": [
+   "full_d19/start2_sobol2_s0.25",
+   "full_d19/start9_sobol27_s0.25"
+  ],
+  "selected": "full_d19/start2_sobol2_s0.25",
+  "tie": false,
+  "note": "",
+  "runner_up": "full_d19/start9_sobol27_s0.25",
+  "gap": 0.001963793509945133,
+  "spread": 0.0009039869826842107,
+  "ranked": [
+   "full_d19/start2_sobol2_s0.25",
+   "full_d19/start9_sobol27_s0.25"
+  ]
+ },
+ "export_check": {
+  "params_identical": true,
+  "rescored_full_exact_score": 0.021994598765432097,
+  "suite_full_exact_score": 0.021994598765432097,
+  "rescored_two_exact_score": 0.27526726973684207,
+  "suite_two_exact_score": 0.27526726973684207,
+  "reproduces": true
+ }
+}

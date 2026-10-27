@@ -158,6 +158,22 @@ def test_primary_endpoint():
     assert endpoint(rows, seeds=[3]) == 0.0
 
 
+def test_endpoint_split_and_drop_events():
+    """Phase 11.4: E = E_R + E_T, and the drop-criterion events split into releases and > 20 mm deviations."""
+    from dkarma.experiments.powered_comparison import endpoint_split, drop_events
+    t = _row(0, 4, [(1, 1), (1, 1), (0, 0), (0, 0)])
+    t["info"][2].update(drop=True, contacts=[False, False, False]); t["n_drop"] = 2           # released at primitive 2
+    r = dict(_row(0, 4, [(1, 1)] * 4), kind="R", n_primitives=4)
+    r["n_drop"] = 4                                                                             # no drop
+    r2 = dict(_row(1, 0, [(1, 1), (0, 0), (0, 0), (0, 0)]), kind="R")
+    r2["info"][1].update(drop=True, contacts=[True, False, False]); r2["n_drop"] = 1           # > 20 mm off, a fingertip touching
+    rows = [t, r, r2]
+    sp = endpoint_split(rows)
+    assert sp["E_T"] == pytest.approx(2 / 12) and sp["E_R"] == pytest.approx(5 / 12) and sp["E"] == pytest.approx(endpoint(rows))
+    d = drop_events(rows)
+    assert d["T"] == dict(trajectories=1, release=1, deviation=0) and d["R"] == dict(trajectories=2, release=0, deviation=1)
+
+
 def test_subset_measures():
     d = dict(n=3, alpha_min=[1.2, 0.4, 1.0], cells=[80, 8, 40], bins=[1382, 10, 461], q=[[0.0]] * 3)
     m = subset_measures(d)

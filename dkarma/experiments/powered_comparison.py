@@ -70,6 +70,29 @@ def endpoint(rows, criterion="strict", capped=False, seeds=None, per="budget", b
     return tot / n if n else 0.0
 
 
+def endpoint_split(rows, budget=BUDGET, library="three_contact"):
+    """Phase 11.4 (docs/phase11_report.md P11.4): ``E`` and its parts from the rotation (``E_R``) and translation (``E_T``)
+    commands, each per budgeted seed (strict, to the first failure, regardless of the exact verdict)."""
+    rs = [r for r in rows if r["library"] == library]
+    tot = {k: float(sum(r["n_sim_rot"] for r in rs if r["kind"] == k)) / budget for k in ("R", "T")}
+    return dict(E=tot["R"] + tot["T"], E_R=tot["R"], E_T=tot["T"])
+
+
+def drop_events(rows, library="three_contact"):
+    """Trajectories that meet the 9.3 drop criterion (centre > 20 mm from the plan, or no assigned fingertip in contact) at
+    some primitive, split by what happened there: ``release`` (no assigned fingertip in contact) or ``deviation`` (> 20 mm off
+    the plan, a fingertip still touching); per command type (``T``, ``R``)."""
+    out = {k: dict(trajectories=0, release=0, deviation=0) for k in ("T", "R")}
+    for r in rows:
+        if r["library"] != library:
+            continue
+        o = out[r["kind"]]; o["trajectories"] += 1
+        k = r["n_drop"]
+        if k < r["n_primitives"]:
+            o["release" if not any(r["info"][k]["contacts"]) else "deviation"] += 1
+    return out
+
+
 def load_rows(path: Path, name: str):
     if not path.exists():
         return None

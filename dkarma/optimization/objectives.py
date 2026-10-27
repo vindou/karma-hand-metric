@@ -50,7 +50,7 @@ GATE_NAMES_3 = GATE_NAMES_2 + ("force",)
 class Constraints:
     """Global design-space constraints (SPEC §8.1) as smooth penalties on the physical design.
     ``base_sep_min_m`` (Phase 9.2, D18): minimum distance between any two finger bases
-    (``None`` = no penalty; 0.0241 m for the admissible design space)."""
+    (``None`` = no penalty; 0.0241 m for the D18 design space, 0.0333 m under the D19 servo envelope)."""
     reach_max_m: float | None = 0.25       # sum of a finger's link lengths incl. tip
     reach_weight: float = 10.0
     base_sep_min_m: float | None = None
@@ -72,6 +72,7 @@ def reach_penalty(params: HandParams, topo: Topology, cons: Constraints):
 
 
 D18_CONSTRAINTS = Constraints(reach_max_m=0.25, base_sep_min_m=0.0241)
+D19_CONSTRAINTS = Constraints(reach_max_m=0.25, base_sep_min_m=0.0333)     # Phase 11: 2 x 16.40 mm servo capsules + 0.5 mm (SPEC §8.1 D19)
 
 
 ValidationFn = Callable[[HandParams], dict]
@@ -304,12 +305,13 @@ def make_objective(topo: Topology, params0: HandParams, bounds: Bounds, task: Ta
 
 
 def exact_validation(obj: Objective, workdir, official: bool = True, name: str = "cand", enforce_d18: bool = False,
-                     self_collision_all: bool = False) -> ValidationFn:
+                     self_collision_all: bool = False, envelope=None) -> ValidationFn:
     """Validation callback: exact library coverage on fresh seeds of the candidate, and
     optionally the original KaRMA on the physical task (SPEC §8.5: the saved candidate is the
     best by this criterion, never by the smooth score). ``enforce_d18``: an inadmissible candidate
-    (base separation, reach) scores zero. ``self_collision_all``: the original KaRMA's
-    self-collision gate tests all fingers (D18)."""
+    (base separation with the design's own base-capsule radii, reach; with ``envelope`` (D19) also the
+    servo envelope) scores zero. ``self_collision_all``: the original KaRMA's self-collision gate tests
+    all fingers (D18)."""
     from pathlib import Path
     counter = {"n": 0}
 
@@ -319,8 +321,10 @@ def exact_validation(obj: Objective, workdir, official: bool = True, name: str =
         out = {}
         if enforce_d18:
             from ..core.admissibility import admissibility
-            adm = admissibility(params, obj.topo)
+            adm = admissibility(params, obj.topo, envelope=envelope)
             out.update(admissible=adm["admissible"], min_base_separation_m=adm["min_base_separation_m"], max_reach_m=adm["max_reach_m"])
+            if envelope is not None:
+                out.update(servo_link_len_margin_m=adm["envelope"]["servo_len_margin_m"])
             if not adm["admissible"]:      # an inadmissible candidate scores zero and is never returned (CLAUDE.md rule 11 b)
                 out.update(n_seeds=0, exact_K_T=0.0, exact_K_R=0.0, exact_score=0.0, d18_violations=adm["violations"])
                 return out
@@ -343,4 +347,4 @@ def exact_validation(obj: Objective, workdir, official: bool = True, name: str =
     return validate
 
 
-__all__ = ["Constraints", "D18_CONSTRAINTS", "reach_penalty", "Objective", "make_objective", "exact_validation", "ValidationFn", "SEED_POLICIES"]
+__all__ = ["Constraints", "D18_CONSTRAINTS", "D19_CONSTRAINTS", "reach_penalty", "Objective", "make_objective", "exact_validation", "ValidationFn", "SEED_POLICIES"]

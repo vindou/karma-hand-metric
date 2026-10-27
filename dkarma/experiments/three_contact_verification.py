@@ -124,6 +124,9 @@ class HostGrasp:
         names = list(topo.fingers)
         self.contact_links = [f"{names[f]}_l{topo.n_joints[f] - 1}" for f in fingers]
         self.links = sorted(self.ctx.link_capsules.keys())
+        # collision envelope: each capsule's own radius (D19); the contact links' gaps use the task's contact radius
+        self.radius = dict(zip(topo.link_names, np.asarray(params.cap_radius, float).tolist()))
+        assert all(abs(self.radius[l] - self.r_l) < 1e-12 for l in self.contact_links), "the contact links must carry the contact radius"
         self.other_links = [l for l in self.links if l not in self.contact_links]
         self.finger_of = {l: l.split("_l")[0] for l in self.links}
         self.pairs = [(a, b) for i, a in enumerate(self.links) for b in self.links[i + 1:] if self.finger_of[a] != self.finger_of[b]]
@@ -152,11 +155,11 @@ class HostGrasp:
         from karma_jax.seeds import _axis_segment
         q, p = z[: self.nq], z[self.nq:]
         segs = self._segs(q)
-        obj = [self._point_seg(p, *segs[l]) - self.r_s - self.r_l for l in self.other_links]
+        obj = [self._point_seg(p, *segs[l]) - self.r_s - self.radius[l] for l in self.other_links]
         selfc = []
         for a, b in self.pairs:
             p0, p1 = closest_points_on_segments(*_axis_segment(*segs[a]), *_axis_segment(*segs[b]))
-            selfc.append(np.linalg.norm(p1 - p0) - 2.0 * self.r_l)
+            selfc.append(np.linalg.norm(p1 - p0) - (self.radius[a] + self.radius[b]))
         return np.array(obj + selfc)
 
     def tip_centroid(self, q):

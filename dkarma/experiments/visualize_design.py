@@ -13,6 +13,11 @@ and all twelve commands of that seed side by side), ``charts`` (per-command succ
 the 48 10.2 designs, load sweep).
 
     MUJOCO_GL=osmesa JAX_PLATFORMS=cpu python -m dkarma.experiments.visualize_design
+
+Another phase directory (Phase 11, ``--phase-dir workspace/phase11 --key full_d19/<start>``): the 11.4 replays, suite,
+sweep and evaluation table (``selection_v2.PhaseDir``), the run in 11.3, N11 as the start design, and the standing among
+that phase's designs. Radii, the base-separation requirement and the labels come from the data, so the Phase 10 figures
+are drawn as before.
 """
 from __future__ import annotations
 
@@ -31,6 +36,7 @@ import numpy as np  # noqa: E402
 
 P10 = Path("workspace/phase10")
 START_ARCHIVE = Path("workspace/phase9/9.3")      # the anthropomorphic start's scene design (8.6/9.3 archive)
+PHASE_DIR = None                                  # ``--phase-dir``: another phase directory (Phase 11)
 TAU = 0.108
 
 # palette (dataviz reference instance): fingers take categorical slots 1-3 in fixed order; status colors only for pass/fail
@@ -51,10 +57,26 @@ def paths(key):
     arm, st = key.split("/")
     k = int(st.split("_")[0].replace("start", ""))
     name = f"{arm}_start{k}"
+    if PHASE_DIR is not None:
+        from dkarma.experiments.selection_v2 import PhaseDir
+        pd = PhaseDir(Path(PHASE_DIR), arm=arm)
+        return dict(arm=arm, st=st, k=k, name=name, archive=pd.sim, sim=pd.sim / "20A_2mm" / f"simulation_force__{name}.json",
+                    suite=pd.ev / "suite" / f"{arm}__{st}" / "suite.json", sweep=pd.ev / "sweeps" / f"{arm}__{st}.json", run=pd.runs / arm / st,
+                    evaluation=pd.ev / "evaluation.json", stask=pd.ev / "stask_report.json", label=f"{pd.ev.name}",
+                    phase="Phase " + pd.root.name.replace("phase", ""),
+                    start=("N11 (nominal start)", "the root of every Phase 11 start", scene_design(pd.starts_dir / "n11" / "n11.design.json")))
     sim = P10 / "10.2/sim/default"
     return dict(arm=arm, st=st, k=k, name=name, archive=sim, sim=sim / "20A_2mm" / f"simulation_force__{name}.json",
                 suite=P10 / "10.2/suite" / f"{arm}__{st}" / "suite.json", sweep=P10 / "10.2/sweeps" / f"{arm}__{st}.json",
-                run=P10 / "10.2" / arm / st, comparison=P10 / "10.2/comparison.json", summary=P10 / "10.2/summary.json")
+                run=P10 / "10.2" / arm / st, comparison=P10 / "10.2/comparison.json", summary=P10 / "10.2/summary.json",
+                stask=Path("workspace/phase10/10.3/stask_report.json"), label="10.2",
+                start=("anthropomorphic start", "the root of every start (8.4)", json.loads((START_ARCHIVE / "start_design.json").read_text())))
+
+
+def radii_text(design):
+    """"r = 11.8 mm" for uniform capsules, else the servo-link and fingertip radii."""
+    r = sorted({round(1e3 * x, 2) for x in np.broadcast_to(np.asarray(design["cap_radius"], float), (len(design["cap_radius"]),))})
+    return f"r = {r[0]:.1f} mm" if len(r) == 1 else "r = " + " (links 0–2) / ".join(f"{x:.2f}".rstrip("0").rstrip(".") + " mm" for x in r[::-1]) + " (fingertips)"
 
 
 def scene_design(design_json: Path) -> dict:
@@ -265,7 +287,7 @@ class Data:
 
 def display(key):
     arm, st = key.split("/")
-    return {"full_d18": "Full-D18", "armAprime": "arm A′"}.get(arm, arm) + " " + st.split("_")[0]
+    return {"full_d18": "Full-D18", "full_d19": "Full-D19", "armAprime": "arm A′"}.get(arm, arm) + " " + st.split("_")[0]
 
 
 def cmd_label(kind, u, n_prim, long=True):
@@ -297,7 +319,7 @@ def stage_views(D: Data, out: Path, seed: int):
     dr = ImageDraw.Draw(canvas)
     f_t, f_s, f_l = font(26, True), font(17), font(16)
     dr.text((24, 16), f"{display(D.key)}: the hand at grasp seed {seed} (exact seed state; sphere ⌀ 30 mm, 35 g)", font=f_t, fill=_hex(INK))
-    dr.text((24, 54), "Capsule links r = 11.8 mm as modelled; the palm itself is not modelled. Palm frame at the origin: "
+    dr.text((24, 54), f"Capsule links {radii_text(D.design)} as modelled; the palm itself is not modelled. Palm frame at the origin: "
                       "x red, y green, z blue. Gravity along −z.", font=f_s, fill=_hex(INK2))
     for i, (label, st, cam) in enumerate(tiles):
         img = Image.fromarray(st.render(cam)).convert("RGBA")
@@ -319,7 +341,7 @@ def stage_views(D: Data, out: Path, seed: int):
     lines.append(("joint ranges (deg), joint 0 → 3", True))
     for fn in ("index", "middle", "thumb"):
         lines.append((f"  {fn:<7}" + "   ".join(f"{-np.degrees(a):.0f} … {np.degrees(b):.0f}".replace("-", "−") for a, b in zip(fp[fn]["lim_lo"], fp[fn]["lim_hi"])), False))
-    lines.append((f"min. base separation {1e3 * adm['min_base_separation_m']:.1f} mm (≥ 24.1); reach {1e3 * adm['max_reach_m']:.1f} mm (≤ 250)", False))
+    lines.append((f"min. base separation {1e3 * adm['min_base_separation_m']:.1f} mm (≥ {1e3 * adm['min_sep_required_m']:.1f}); reach {1e3 * adm['max_reach_m']:.1f} mm (≤ 250)", False))
     lines.append(("one XL330-M077-T per joint, ceiling 0.108 N·m", False))
     y = y0 + 40
     fm = font(15); fmb = font(15, True)
@@ -332,9 +354,11 @@ def stage_views(D: Data, out: Path, seed: int):
 
 def stage_compare(D: Data, out: Path):
     from PIL import Image, ImageDraw
-    designs = [("anthropomorphic start", "the root of every start (8.4)", json.loads((START_ARCHIVE / "start_design.json").read_text())),
-               ("start31, initial", "Sobol point 41, scale 0.25", scene_design(D.P["run"] / "initial_morphology/initial_morphology.design.json")),
-               ("start31, optimized (selected)", "Full KaRMA + Adam, 40 iterations", D.design)]
+    m = re.match(r"start(\d+)_sobol(\d+)_s([\d.]+)", D.P["st"])
+    sk = D.P["st"].split("_")[0]
+    designs = [D.P["start"],
+               (f"{sk}, initial", f"Sobol point {m.group(2)}, scale {m.group(3)}" if m else "the nominal start", scene_design(D.P["run"] / "initial_morphology/initial_morphology.design.json")),
+               (f"{sk}, optimized (selected)", "Full KaRMA + Adam, 40 iterations", D.design)]
     q30 = None
     tw, th, ext, head, foot = 560, 440, 0.16, 96, 150
     W, H = 3 * tw, 2 * th + head + foot
@@ -360,8 +384,8 @@ def stage_compare(D: Data, out: Path):
     cols = vh[0]; v = {int(r[cols.index("iter")]): float(r[cols.index("exact_score")]) for r in vh[1:]}
     y = head + 2 * th + 18
     _finger_legend(dr, 24, y, font(16))
-    st3 = json.loads(Path("workspace/phase10/10.3/stask_report.json").read_text())["designs"]
-    dr.text((24, y + 36), f"Exact Full score, 12-seed suite (mean over 3 seed configurations): anthropomorphic start {st3['start/start0_nominal']['mean_over_configs']['full_all']:.4f}, "
+    st3 = json.loads(Path(D.P["stask"]).read_text())["designs"]
+    dr.text((24, y + 36), f"Exact Full score, 12-seed suite (mean over 3 seed configurations): {D.P['start'][0].split(' (')[0]} {st3['start/start0_nominal']['mean_over_configs']['full_all']:.4f}, "
                           f"selected {st3[D.key]['mean_over_configs']['full_all']:.4f}.", font=font(16), fill=_hex(INK2))
     dr.text((24, y + 62), "The run's own validation (6 seeds): " + ", ".join(f"iteration {k} {s:.4f}" for k, s in sorted(v.items()))
             + "; the initial design was not scored by the run.", font=font(16), fill=_hex(INK2))
@@ -382,7 +406,7 @@ def stage_gallery(D: Data, out: Path, seed: int):
     amin = D.alpha.min(1)
     dr.text((24, 16), f"{display(D.key)}: the 12 three-contact grasps found by the seed search (default configuration)", font=font(26, True), fill=_hex(INK))
     dr.text((24, 54), f"Same orthographic camera, from +x and slightly above. α_min: the grasp's capacity in its weakest of 14 directions (× the standard load); "
-                      f"robust (α_min ≥ 1): {int((amin >= 1).sum())} of 12. Primitives: strict successes in the 10.2 replay, of 84.",
+                      f"robust (α_min ≥ 1): {int((amin >= 1).sum())} of 12. Primitives: strict successes in the {D.P['label']} replay, of 84.",
             font=font(17), fill=_hex(INK2))
     for s in D.seeds:
         st.pose(D.seed_q[s], D.seed_p[s])
@@ -645,7 +669,7 @@ def stage_animate(D: Data, out: Path, seed: int, fps: int = 25, slow: float = 5.
             dc = ImageDraw.Draw(canvas)
             jj = min(j, T - 1)
             tsim = clips[order[-1]]["frames"][min(jj, len(clips[order[-1]]["frames"]) - 1)]["t"]
-            dc.text((20, 12), f"{display(D.key)} · grasp seed {seed}: all twelve commands from the same grasp (same replay as the 10.2 endpoint)", font=font(20, True), fill=_hex(INK))
+            dc.text((20, 12), f"{display(D.key)} · grasp seed {seed}: all twelve commands from the same grasp (same replay as the {D.P['label']} endpoint)", font=font(20, True), fill=_hex(INK))
             dc.text((20, 40), f"top rows: rotations, 10 × 0.15 rad · bottom row: translations, 4 × 10 mm · boxes: strict pass / fail per primitive · "
                               f"violet ghost: planned sphere · 5× slow motion · t = {tsim:.3f} s",
                     font=font(15), fill=_hex(INK2))
@@ -745,14 +769,49 @@ def stage_charts(D: Data, out: Path, seed: int):
     cb.outline.set_visible(False); cb.ax.tick_params(colors=INK2, length=0)
     fig.suptitle(f"Wrench capacity: every grasp carries at least {amin.min():.2f} × the standard load in each of 14 directions",
                  x=0.02, ha="left", fontweight="bold", fontsize=14)
-    fig.text(0.02, 0.905, "α(d): the largest multiple of the standard load along d that the grasp carries on top of the object's weight (exact SLSQP, 0.108 N·m ceiling). "
+    fig.text(0.02, 0.925, "α(d): the largest multiple of the standard load along d that the grasp carries on top of the object's weight (exact SLSQP, 0.108 N·m ceiling). "
                           "Standard load: the 35 g weight (forces, palm-frame axes) or weight × 15 mm (moments); mix 1, 2: fixed mixed directions. "
                           "Outlined: each seed's weakest direction. Robust grasp (S_task): α ≥ 1 in all 14.",
-             fontsize=10, color=INK2, wrap=True)
+             fontsize=10, color=INK2, wrap=True, va="top")      # top-anchored: the wrapped lines grow downward, not into the title
     fig.subplots_adjust(left=0.08, right=0.94, top=0.82, bottom=0.07)
     fig.savefig(out / "wrench_capacity.png", dpi=150); plt.close(fig)
 
-    # 3. standing among the 48 10.2 designs
+    # 3. standing among the 48 10.2 designs (another phase directory: among its designs)
+    if PHASE_DIR is not None:
+        _standing_phase(D, out, plt)
+    else:
+        _standing_10_2(D, out, plt)
+
+    # 4. load sweep
+    _load_sweep(D, out, plt)
+
+
+def _standing_phase(D, out, plt):
+    """E and the exact Full score of every design of the phase directory (one arm), the selected one highlighted."""
+    ev = json.loads(D.P["evaluation"].read_text())["rows"]
+    keys = [k for k in ev if k.startswith(D.P["arm"] + "/") and ev[k]["sim"]["20A_2mm/force"] is not None]
+    keys = sorted(keys, key=lambda k: ev[k]["sim"]["20A_2mm/force"]["E"])
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(12, 0.32 * len(keys) + 1.6), sharey=True, gridspec_kw=dict(wspace=0.08))
+    for ax, get, xl in ((a1, lambda k: ev[k]["sim"]["20A_2mm/force"]["E"], "E: strict simulated primitives per budgeted seed"),
+                        (a2, lambda k: ev[k]["primary"]["full_mean"], "exact Full score (mean of 3 seed configurations)")):
+        for i, k in enumerate(keys):
+            sel = k == D.key
+            if sel:
+                ax.axhspan(i - 0.5, i + 0.5, color="#f0efec", zorder=0)
+            ax.scatter([get(k)], [i], s=46 if not sel else 80, color=FINGER["index"], edgecolor=SURF if not sel else INK, linewidth=1.5, zorder=3)
+        ax.set_xlabel(xl); ax.grid(axis="x", color=GRID, lw=0.8); ax.set_axisbelow(True); ax.tick_params(length=0)
+        ax.spines["left"].set_visible(False)
+    a1.set_yticks(range(len(keys)), [k.split("/")[1].split("_")[0] + ("  (selected)" if k == D.key else "") for k in keys])
+    for lbl in a1.get_yticklabels():
+        if "(selected)" in lbl.get_text():
+            lbl.set_fontweight("bold"); lbl.set_color(INK)
+    a1.set_ylim(-0.8, len(keys) - 0.2)
+    fig.suptitle(f"The selected design among the {len(keys)} designs of {D.P['phase']} (Full KaRMA + Adam, one per start)", x=0.02, ha="left", fontweight="bold", fontsize=14)
+    fig.subplots_adjust(left=0.15, right=0.98, top=1 - 0.9 / (0.32 * len(keys) + 1.6), bottom=0.6 / (0.32 * len(keys) + 1.6))
+    fig.savefig(out / "standing_among_designs.png", dpi=150); plt.close(fig)
+
+
+def _standing_10_2(D, out, plt):
     comp = json.loads(D.P["comparison"].read_text())
     E_ = comp["measures"]["primary"]["per_start"]
     summ = json.loads(D.P["summary"].read_text())["per_design"]
@@ -783,7 +842,8 @@ def stage_charts(D: Data, out: Path, seed: int):
     fig.subplots_adjust(left=0.15, right=0.98, top=0.87, bottom=0.07)
     fig.savefig(out / "standing_among_designs.png", dpi=150); plt.close(fig)
 
-    # 4. load sweep
+
+def _load_sweep(D, out, plt):
     sw = json.loads(D.P["sweep"].read_text())["rows"]
     lab = {("torque", 0.215): "stall 0.215 N·m", ("torque", 0.108): "primary ceiling 0.108 N·m", ("torque", 0.043): "continuous 0.043 N·m",
            ("mass", 0.108): "70 g object, 0.108 N·m"}
@@ -809,7 +869,10 @@ def main():
     ap.add_argument("--out", default="results/fabrication_candidates/selected_full_d18_start31_sobol41_s0.25/figures")
     ap.add_argument("--seed", type=int, default=8, help="the grasp seed shown in the views and the animations")
     ap.add_argument("--stages", nargs="*", default=["views", "compare", "gallery", "charts", "animate"])
+    ap.add_argument("--phase-dir", default=None, help="another phase directory (Phase 11: workspace/phase11)")
     args = ap.parse_args()
+    global PHASE_DIR
+    PHASE_DIR = args.phase_dir
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
     if shutil.which("ffmpeg") is None and "animate" in args.stages:
         raise SystemExit("ffmpeg is needed for the animate stage")

@@ -14,7 +14,7 @@ repo holds three generations of code:
 | `karma/` | the paper's reference implementation (NumPy, Pinocchio, OSQP, scipy, healpy) | **frozen**; produces the published numbers in `results/`; never edit |
 | `karma_jax/` | exact batched JAX/CUDA port of the same metric, oracle-tested against `karma/` | done through Phase D of `docs/jax_rewrite_plan.md`; extend, do not fork |
 | `optimize/` | CMA-ES adversarial optimization of KaRMA over a two-finger design family, with a GPU job queue | experiment running; arms B–E still queued |
-| `dkarma/` | the differentiable, actuation-aware, multi-contact extension and morphology optimizer specified in `SPEC.md` | Phases 0-10 delivered (`docs/phase{0..10}_report.md`; reviews `docs/phase8_review_2026-10-13.md`, `docs/phase9_review_2026-10-14.md`); **Phase 10 (SPEC §11.3) awaits the owner's review**: 10.1 compliant pads, verdict partial; 10.2 claim made (Full-D18 ahead of arm A′ on 22 of 24 new starts, p = 9 × 10⁻⁵); criterion v2 (SPEC §16 item 12, frozen by the session, not yet accepted) selects Full-D18 start31; the original criterion selects nothing. Framework fixed, no new metric formulations. `dkarma/tests`: 205 passed, 6 skipped. Only one session may write under `dkarma/` at a time |
+| `dkarma/` | the differentiable, actuation-aware, multi-contact extension and morphology optimizer specified in `SPEC.md` | Phases 0-10 delivered (`docs/phase{0..10}_report.md`; reviews `docs/phase8_review_2026-10-13.md`, `docs/phase9_review_2026-10-14.md`); Phase 10 (SPEC §11.3): 10.1 compliant pads, verdict partial; 10.2 claim made (Full-D18 ahead of arm A′ on 22 of 24 new starts, p = 9 × 10⁻⁵); criterion v2 (SPEC §16 item 12, frozen by the session, not yet accepted) selected Full-D18 start31, which the servo envelope (D19) now excludes. **Phase 11 (SPEC §11.4, re-optimization inside the D19 servo envelope) is the current work.** Framework fixed apart from D19, no new metric formulations. `dkarma/tests`: 205 passed, 6 skipped. Only one session may write under `dkarma/` at a time |
 
 Git: the work is committed on branch `dkarma-phase0-10` on top of the upstream commit
 `c8d3698` (owner's decision, 2026-10-23, SPEC.md §16 item 13, superseding D15).
@@ -32,7 +32,12 @@ palm frame; SO(3) coverage over 576 Hopf-grid targets (smooth, σ_R 0.15 rad)
 and 4608 bins (exact); no parameter tying across fingers. Admissibility (SPEC
 §8.1 D18, confirmed 2026-10-13): no two modelled fingers may occupy the same
 space; finger bases ≥ 2 r_l + eps_col = 24.1 mm apart; reach bound 250 mm per
-finger is the global hand envelope.
+finger is the global hand envelope. Servo envelope (SPEC §8.1 D19, owner's
+decision 2026-10-23, from Phase 11): links 0–2 each hold an XL330 case
+(20 × 34 × 26 mm), so their capsules have r = 16.40 mm and their lengths are
+≥ 34 mm, link 0 included (a link 0 relaxation was withdrawn on 2026-10-24); the
+fingertip keeps r = 11.8 mm (the contact radius of the frozen task) and its
+12–90 mm bounds; base separation 2 × 16.40 + 0.5 = 33.30 mm.
 
 ## Environments and commands
 
@@ -158,7 +163,8 @@ tolerances; re-score with `python -m dkarma.fixtures.rescore`), which copies
    changes.
 8. **Phase discipline.** Implement only the approved phase of `SPEC.md` §11.
    Do not start the next phase because the code runs; the acceptance tests
-   decide. Do not add mechanical-packaging, bearing or structural constraints.
+   decide. Do not add mechanical-packaging, bearing or structural constraints
+   beyond the D19 servo envelope (owner's decision, 2026-10-23).
 9. **Per-phase report** (in the final message and, for larger phases, under
    `docs/`): files changed and purpose, formulation actually implemented,
    tests run with results, known limitations and numerical issues, a minimal
@@ -167,7 +173,7 @@ tolerances; re-score with `python -m dkarma.fixtures.rescore`), which copies
     and the relevant `dkarma/tests` after touching `dkarma/`. Reference
     regression (16-hand sweep) is expensive; run it when kernels change, not
     on every edit, and compare against the Status table.
-11. **No new metric formulations (Phases 8-10).** No new metric variants,
+11. **No new metric formulations (Phases 8-11).** No new metric variants,
     kernels or contact models of any evaluator; no solver or optimizer changes in
     Phase 10; changes to the frozen task of SPEC §2 or to the design box need an
     owner decision in SPEC §16. Phase 10 (SPEC §11.3) keeps the framework fixed.
@@ -188,6 +194,16 @@ tolerances; re-score with `python -m dkarma.fixtures.rescore`), which copies
     the original 9.5 criterion, which is applied alongside criterion v2.
     (e) The Phase 9 settings stay: `kkt_method="reduced"`, `exp_so3_safe`,
     norm-100 clipping, cached exact evaluators, and suites and exports on the CPU.
+    Phase 11 (SPEC §11.4) adds: (f) D19 is the only change to the design space:
+    the frozen task (with its 11.8 mm contact radius), the compliant pads, the
+    controllers and the Phase 9/10 solver and optimizer settings stay; (g) every
+    use of a capsule radius is either the contact surface (the fingertip's
+    `link_radius_m`) or the collision envelope (each capsule's `cap_radius`), and
+    with uniform 11.8 mm radii and the D18 box the Phase 10 numbers reproduce bit
+    for bit; (h) `karma_jax` kernels are not extended for mixed radii, so
+    original-KaRMA scores are not computed under D19; (i) Phase 11 makes no
+    comparative claim and selects with criterion v2 (still pending the owner's
+    review) beside the original criterion, as in 10.4.
     Phase 9 rules, still binding: (a) the KKT
     derivative repair is a three-way derivative comparison with
     finite-difference tests on well-conditioned and degenerate states, never

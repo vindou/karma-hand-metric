@@ -74,3 +74,43 @@ configuration) and reproduces the suite exactly (`selection_numbers.json`); the 
 candidate fails requirement 4, which judges three-contact agreement against a two-contact reference; arm B, Full-D18
 start0 and arm A′ start6 also fail requirement 3. The two verdicts are not equivalent, and criterion v2 awaits the owner's
 review.
+
+
+## Phase 11 (2026-10-24): inside the servo envelope (D19), criterion v2 selects `selected_full_d19_start2_sobol2_s0.25/`; the original criterion still selects nothing
+
+D19 (SPEC §8.1, §16 item 14; owner's decision 2026-10-23, link 0 included 2026-10-24) makes the XL330 servo case part of
+the design box:
+
+* links 0–2 are 16.40 mm capsules at least 34 mm long;
+* the fingertips keep 11.8 mm and 12–90 mm;
+* the finger bases are at least 33.30 mm apart.
+
+None of the Phase 7–10 designs in this directory is admissible under D19. **The Phase 10 selection
+(`selected_full_d18_start31_sobol41_s0.25/`) is superseded for fabrication**; its results stand for the D18 box.
+
+Phase 11 (`docs/phase11_report.md`) re-ran Full KaRMA + Adam inside D19 from 24 starts and evaluated every returned design
+with the 10.2 pipeline. It then applied criterion v2 exactly as frozen in Phase 10 (eligibility under D19; R3 against the
+D19 nominal start N11, 0.0197; R5 0.239), and the original 9.5 criterion alongside. The two are not equivalent.
+
+| directory | design | status | key numbers (fixed physical task, D19 box) |
+| --- | --- | --- | --- |
+| `selected_full_d19_start2_sobol2_s0.25/` | Full KaRMA + Adam under D19 from start2 (`workspace/phase11/11.3/full_d19/start2_sobol2_s0.25/`, optimizer seed 0) | **selected by criterion v2** (2 of 24 pass; the runner-up start9 trails by more than the seed-configuration spread); not selected by the original criterion (requirement 3: weakest grasp 0.75 × weight; requirement 4: rigid three-contact FP 0.66 / 0.59 against the two-finger baseline's 0.19 / 0.18) | links 38.5–44.7 mm (servo) and 25.7–31.1 mm (fingertips); bases ≥ 53.9 mm apart; reach 151.8 mm; exact Full 0.0211 on all seeds and 0.0224 on `S_task`; robust grasps 10 / 11 / 8 of 12; simulated three-contact manipulation E = 29.75 per seed (24.1 rotations + 5.7 translations; the best of 24); compliant FP 0.10 (323 primitives); 70 g: 11 of 12 seeds hold, 92 %; **continuous ceiling: 1 of 12 seeds hold**; two-finger exact 0.2621 |
+
+*What the envelope costs, against the Phase 10 selection (descriptive):*
+
+* exact Full score −11 %;
+* E −34 % (45.0 → 29.75);
+* weakest grasp 1.92 → 0.75 × weight;
+* continuous-ceiling retention 73 % → 3 %;
+* two-finger score −5 %;
+* reach +36 mm.
+
+The exported copy was re-scored (default configuration) and reproduces the suite exactly (`selection_numbers.json`); the
+Phase 11 numbers are in `phase11_numbers.json`. Renders, MuJoCo replay videos and charts are in `figures/`
+(`figures/README.md`).
+
+Criterion v2 awaits the owner's review. Before fabrication:
+
+* a measured joint-side torque curve and a thermal check of a sustained hold, since the design keeps almost no grasp at
+  the continuous estimate;
+* the pad silicone's indentation test.

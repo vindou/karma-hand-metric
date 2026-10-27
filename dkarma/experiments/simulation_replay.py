@@ -37,7 +37,7 @@ import numpy as np
 jax.config.update("jax_enable_x64", True)
 
 from dkarma.core import build_hand_model, load_task_spec, Topology, anthropomorphic, params_to_fingers  # noqa: E402
-from dkarma.core.contacts import contact_pass  # noqa: E402
+from dkarma.core.contacts import contact_pass, mixed_radii  # noqa: E402
 from dkarma.solvers.seed_projection import find_seeds, find_multi_seeds, SeedConfig, assignment  # noqa: E402
 from dkarma.solvers.rollout import GraspState, rollout, exact_gates  # noqa: E402
 from dkarma.solvers.exact import validate_translation, validate_rotation, fail_names  # noqa: E402
@@ -151,8 +151,9 @@ def export_two_finger(hm, topo, seeds, sp, task, cfg, act):
         st0 = GraspState(q, p, jnp.eye(3))
         sT, dT = jax.vmap(lambda a, b: rollout(hm, st0, a, b, asg, sp, roll_T))(lib.dp_T, lib.dth_T)
         sR, dR = jax.vmap(lambda a, b: rollout(hm, st0, a, b, asg, sp, roll_R))(lib.dp_R, lib.dth_R)
-        exT = jax.vmap(lambda a: validate_translation(hm, st0, a, asg, sp, n_sub))(lib.dp_T)
-        exR = jax.vmap(lambda a: validate_rotation(hm, st0, a, asg, sp))(lib.dth_R)
+        env = mixed_radii(hm, sp.link_radius)       # D19: the reference gates per capsule (dkarma.solvers.exact)
+        exT = jax.vmap(lambda a: validate_translation(hm, st0, a, asg, sp, n_sub, envelope=env))(lib.dp_T)
+        exR = jax.vmap(lambda a: validate_rotation(hm, st0, a, asg, sp, envelope=env))(lib.dth_R)
         okT, okR = np.asarray(exT.ok), np.asarray(exR.ok)
         cT, cR = np.asarray(exT.code), np.asarray(exR.code)
         for u in range(okT.shape[0]):
@@ -313,6 +314,12 @@ def mjcf_from_design(design: dict, task, tau_bar: float, kp: float = 20.0, times
     if pad is None:
         return xml
     import mujoco
+    from dkarma.experiments.compliant_pad import R_LINK_M
+    radii = _capsule_radii(design)
+    for fname, f in design["fingers"].items():      # the pads are fitted to the 11.8 mm fingertip (Phase 10.1): contact surface only
+        k = len(f["axis_theta"]) - 1
+        if abs(radii[fname][k] - R_LINK_M) > 1e-12:
+            raise ValueError(f"compliant pad on {fname}_c{k} of radius {radii[fname][k]} m; the pad sets are fitted to {R_LINK_M} m")
     m = mujoco.MjModel.from_xml_string(xml)
     sph = m.body("sphere").id
     mu = task.obj.friction_coefficient
@@ -334,10 +341,23 @@ def mjcf_from_design(design: dict, task, tau_bar: float, kp: float = 20.0, times
     return xml.replace("  </contact>", "\n".join(pairs) + "\n  </contact>")
 
 
+def _capsule_radii(design: dict) -> dict:
+    """{finger: [radius per link]} from the design dict's flat ``cap_radius`` (finger-major in the topology's finger
+    order, ``design["topology"]["fingers"]`` when present, else the order of ``design["fingers"]``)."""
+    order = design.get("topology", {}).get("fingers") or list(design["fingers"])
+    r = list(np.broadcast_to(np.asarray(design["cap_radius"], float), (sum(len(design["fingers"][f]["axis_theta"]) for f in order),)))
+    out, c = {}, 0
+    for f in order:
+        n = len(design["fingers"][f]["axis_theta"])
+        out[f] = [float(x) for x in r[c:c + n]]; c += n
+    return out
+
+
 def _mjcf_rigid(design: dict, task, tau_bar: float, kp: float = 20.0, timestep: float = 5e-4) -> str:
-    """The 8.6/9.3 scene (rigid capsules)."""
+    """The 8.6/9.3 scene (rigid capsules), each capsule with its own radius (Phase 11, D19); the terminal capsule's
+    axis ends one fingertip radius before the tip, as the dkarma model's."""
     from scipy.spatial.transform import Rotation
-    fingers = design["fingers"]; r_l = design["cap_radius"][0]
+    fingers = design["fingers"]; radii = _capsule_radii(design)
     r_s, m_s, mu = task.obj.radius_m, task.obj.mass_kg, task.obj.friction_coefficient
     gamma = mu * 0.003
     fr = f"{mu} {gamma} 0.0001"
@@ -357,6 +377,7 @@ def _mjcf_rigid(design: dict, task, tau_bar: float, kp: float = 20.0, timestep: 
             quat = q0 if k == 0 else "1 0 0 0"
             th, ph = f["axis_theta"][k], f["axis_phi"][k]
             ax = [np.cos(th), np.sin(th) * np.cos(ph), np.sin(th) * np.sin(ph)]
+            r_l = radii[fname][k]
             L = f["link_len"][k] if k < n - 1 else max(f["link_len"][k] - r_l, 0.0)
             lines.append(f'{indent}<body name="{fname}_l{k}" pos="{pos[0]} {pos[1]} {pos[2]}" quat="{quat}">')
             lines.append(f'{indent}  <joint name="{fname}_j{k}" type="hinge" axis="{ax[0]} {ax[1]} {ax[2]}" range="{-f["lim_lo"][k]} {f["lim_hi"][k]}" limited="true"/>')

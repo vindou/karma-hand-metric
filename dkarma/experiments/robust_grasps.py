@@ -12,6 +12,10 @@ Phase 10 suites written with ``--per-seed-detail`` already hold the capacities a
 
     JAX_PLATFORMS=cpu ~/mamba/envs/karma-jax/bin/python -m dkarma.experiments.robust_grasps stask --design armB
     JAX_PLATFORMS=cpu ~/mamba/envs/karma-jax/bin/python -m dkarma.experiments.robust_grasps report
+
+Phase 11 (another phase directory): ``report --suite-root <dir> --sim-root <dir>/sim --starts <starts.json> --arm full_d19``
+reads the suites (with per-seed detail) of the start design and of every ``<arm>/<start>`` from ``<suite-root>/suite/`` and
+the replays from ``<sim-root>/<config>/<model>/`` (design names ``candidate_selection.sim_name``).
 """
 from __future__ import annotations
 
@@ -27,6 +31,9 @@ OUT = Path("workspace/phase10/10.3")
 P9 = Path("workspace/phase9/9.2")
 P10 = Path("workspace/phase10/10.2")
 CONFIGS = ("default", "sobol512_rs7", "lin7_rs13")
+SUITE_ROOTS = None          # ``--suite-root``: searched for suite/<key>/suite.json instead of the Phase 9/10 roots
+SIM_ROOT = None             # ``--sim-root``: <root>/<config>/<model>/simulation_<controller>__<name>.json, exports in <root>/<config>/
+KEYS = None                 # the designs of ``report`` (default: ``designs_listed()``)
 ALPHA_MIN = 1.0
 N_CELLS, N_BINS, REF_T, REF_R = 8000, 4608, 0.10, 0.30
 
@@ -38,6 +45,9 @@ def seed_score(cells, bins):
 
 def suite_path(key: str) -> Path:
     """Phase 10 designs (``armAprime/start8_...``) live in workspace/phase10/10.2, the others in workspace/phase9/9.2."""
+    if SUITE_ROOTS is not None:
+        cands = [Path(r) / "suite" / key.replace("/", "__") / "suite.json" for r in SUITE_ROOTS]
+        return next((c for c in cands if c.exists()), cands[0])
     p10 = P10 / "suite" / key.replace("/", "__") / "suite.json"
     return p10 if p10.exists() else P9 / "suite" / key.replace("/", "__") / "suite.json"
 
@@ -146,6 +156,10 @@ def export_seed_q(npz: Path):
 
 def _sim_file(key, cname="default", model="20A_2mm", controller="force"):
     """(simulation JSON, design name) of a design's 12-seed three-contact replay."""
+    if SIM_ROOT is not None:
+        from dkarma.experiments.candidate_selection import sim_name
+        name = sim_name(key)
+        return Path(SIM_ROOT) / cname / model / f"simulation_{controller}__{name}.json", name
     arm, st = (key.split("/") + [None])[:2]
     if st is None:
         return Path("workspace/phase10/10.1") / model / "9.2" / f"simulation_{controller}__{key}.json", key
@@ -159,7 +173,11 @@ def endpoint_on_subset(key, d, cname="default", model="20A_2mm", controller="for
     """The 10.2 primary endpoint on S_task: (E all seeds, E per robust seed, E per budgeted seed, matched seeds)."""
     from dkarma.experiments.powered_comparison import endpoint
     arm, st = (key.split("/") + [None])[:2]
-    if st is None:
+    if SIM_ROOT is not None:
+        sim, name = _sim_file(key, cname, model, controller)
+        npz = Path(SIM_ROOT) / cname / f"{name}_trajectories.npz"
+        st = "phase_dir"                                          # every design of the phase directory has its own export
+    elif st is None:
         name = key; sim = Path("workspace/phase10/10.1") / model / "9.2" / f"simulation_{controller}__{name}.json"; npz = Path("workspace/phase9/9.2/sim") / f"{name}_trajectories.npz"
     else:
         k = int(st.split("_")[0].replace("start", "")); name = f"{arm}_start{k}"
@@ -167,7 +185,7 @@ def endpoint_on_subset(key, d, cname="default", model="20A_2mm", controller="for
             sim = Path("workspace/phase10/10.1") / model / "9.2" / f"simulation_{controller}__{name}.json"; npz = Path("workspace/phase9/9.2/sim") / f"{name}_trajectories.npz"
         else:
             sim = P10 / "sim" / cname / model / f"simulation_{controller}__{name}.json"; npz = P10 / "sim" / cname / f"{name}_trajectories.npz"
-    if cname != "default" and (st is None or int(st.split("_")[0].replace("start", "")) < 8):
+    if SIM_ROOT is None and cname != "default" and (st is None or int(st.split("_")[0].replace("start", "")) < 8):
         return None
     if not npz.exists() or not sim.exists():
         return None
@@ -197,13 +215,13 @@ def report(out: Path = OUT, log=print):
     f4 = lambda x: "–" if x is None else f"{x:.4f}"   # noqa: E731
     rec = dict(task="fixed physical (SPEC §2), primary ceiling 0.108 N·m, 14 standard wrench directions, S_task = {s : min_d alpha_s(d) >= 1}",
                definitions="docs/phase10_report.md P10.3", designs={})
-    lines = ["# Phase 10.3: task-feasible grasp subset S_task (fixed physical task, primary ceiling)", "",
+    lines = [f"# {'Phase 10.3' if KEYS is None else 'Task-feasible grasps'}: task-feasible grasp subset S_task (fixed physical task, primary ceiling)", "",
              "S_task = {s : min_d α_s(d) ≥ 1} over the 14 standard wrench directions at the primary ceiling (35 g weight and weight × radius as scales). "
              "Per seed configuration: |S_task| of the found seeds (and of the 12-seed budget), the exact Full score on all seeds (unchanged, as the suite) and on "
              "S_task alone (same formula, mean over S_task seeds). The subset results are not equivalent to the original criterion.", "",
              "| design | config | seeds found | S_task | of found / of 12 | min α per seed (sorted) | exact Full, all seeds | exact Full, S_task only | per-seed counts = suite |",
              "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
-    for key in designs_listed():
+    for key in (KEYS if KEYS is not None else designs_listed()):
         d, origin = per_seed_data(key, out)
         if d is None:
             continue
@@ -266,8 +284,17 @@ def main():
     ap.add_argument("stage", choices=["stask", "report"])
     ap.add_argument("--design", default=None)
     ap.add_argument("--out", default=str(OUT))
+    ap.add_argument("--suite-root", nargs="*", default=None, help="report: directories with suite/<key>/suite.json (default: the Phase 9/10 ones)")
+    ap.add_argument("--sim-root", default=None, help="report: replay root <root>/<config>/<model>/ with the exports in <root>/<config>/")
+    ap.add_argument("--starts", default=None, help="report: starts.json of a phase directory; designs start/start0_nominal and <arm>/<start>")
+    ap.add_argument("--arm", default="full_d19", help="report: the arm of --starts")
     args = ap.parse_args()
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
+    global SUITE_ROOTS, SIM_ROOT, KEYS
+    SUITE_ROOTS, SIM_ROOT = args.suite_root, args.sim_root
+    if args.starts:
+        names = [s["name"] for s in json.loads(Path(args.starts).read_text())["starts"]]
+        KEYS = ["start/start0_nominal"] + [f"{args.arm}/{n}" for n in names]
     if args.stage == "stask":
         run_stask(args.design, out)
     else:

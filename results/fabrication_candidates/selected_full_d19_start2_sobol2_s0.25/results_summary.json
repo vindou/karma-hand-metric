@@ -1,0 +1,115 @@
+{
+ "best_validation": {
+  "admissible": true,
+  "min_base_separation_m": 0.053862317627610436,
+  "max_reach_m": 0.15176529787526255,
+  "servo_link_len_margin_m": 0.0045148926818302515,
+  "n_seeds": 6,
+  "exact_K_T": 0.0008958333333333333,
+  "exact_K_R": 0.005461516203703704,
+  "exact_score": 0.02716338734567901
+ },
+ "meta": {
+  "method": "adam",
+  "lr": 0.02,
+  "n_iters": 40,
+  "stages": 2,
+  "seed": 0,
+  "schedule": [
+   {
+    "mode": "soft",
+    "sigma_p_m": 0.015,
+    "sigma_r_rad": 0.25,
+    "sigma_energy": 8.0
+   },
+   {
+    "mode": "hard",
+    "sigma_p_m": 0.006,
+    "sigma_r_rad": 0.09,
+    "sigma_energy": 1.0
+   }
+  ],
+  "options": {
+   "grad_clip": 100.0,
+   "grad_spike": null,
+   "skip_nonfinite": true,
+   "reset_moments": true,
+   "stage_select": true,
+   "seed_policy": "reproject",
+   "reseed_every": 10,
+   "schedule_kw": {}
+  },
+  "stages_log": [
+   {
+    "stage": 0,
+    "iter_start": 0,
+    "config": {
+     "mode": "soft",
+     "sigma_p_m": 0.015,
+     "sigma_r_rad": 0.25,
+     "sigma_energy": 8.0
+    },
+    "n_nonfinite": 0,
+    "n_clipped": 1,
+    "n_spikes": 0,
+    "n_seeds": 6,
+    "iter_end": 20,
+    "smooth_first": 0.19274065973433158,
+    "smooth_last": 0.7496699863512885,
+    "exact_end_raw": 0.014414544753086421,
+    "validation_end_raw": {
+     "admissible": true,
+     "min_base_separation_m": 0.04940534724139209,
+     "max_reach_m": 0.15105339217922992,
+     "servo_link_len_margin_m": 0.004223296871160798,
+     "n_seeds": 6,
+     "exact_K_T": 0.0004166666666666667,
+     "exact_K_R": 0.0030743634259259257,
+     "exact_score": 0.014414544753086421
+    },
+    "selected_iter": 20,
+    "exact_end_selected": 0.014414544753086421
+   },
+   {
+    "stage": 1,
+    "iter_start": 20,
+    "config": {
+     "mode": "hard",
+     "sigma_p_m": 0.006,
+     "sigma_r_rad": 0.09,
+     "sigma_energy": 1.0
+    },
+    "n_nonfinite": 0,
+    "n_clipped": 4,
+    "n_spikes": 0,
+    "n_seeds": 6,
+    "iter_end": 40,
+    "smooth_first": 0.12199082381595423,
+    "smooth_last": 0.18877843870296535,
+    "exact_end_raw": 0.02716338734567901,
+    "validation_end_raw": {
+     "admissible": true,
+     "min_base_separation_m": 0.053862317627610436,
+     "max_reach_m": 0.15176529787526255,
+     "servo_link_len_margin_m": 0.0045148926818302515,
+     "n_seeds": 6,
+     "exact_K_T": 0.0008958333333333333,
+     "exact_K_R": 0.005461516203703704,
+     "exact_score": 0.02716338734567901
+    },
+    "selected_iter": 40,
+    "exact_end_selected": 0.02716338734567901
+   }
+  ],
+  "seed_events": [],
+  "best_iter": 40,
+  "final_iterate_exact_raw": 0.02716338734567901,
+  "final_iterate_exact_selected": 0.02716338734567901,
+  "best_intermediate_exact": 0.023863811728395058,
+  "n_validations": 4,
+  "validation_time_s": 600.3769234710053,
+  "wall_clock_s": 687.5372945959971,
+  "optimizer_time_s": 87.16037611498905
+ },
+ "n_training": 40
+}

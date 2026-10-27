@@ -1,0 +1,172 @@
+{
+ "arm": "full_d19",
+ "start": "start2_sobol2_s0.25",
+ "wall_s": 900.2883596890024,
+ "optimizer_time_s": 87.16037611498905,
+ "validation_time_s": 600.3769234710053,
+ "best_validation": {
+  "admissible": true,
+  "min_base_separation_m": 0.053862317627610436,
+  "max_reach_m": 0.15176529787526255,
+  "servo_link_len_margin_m": 0.0045148926818302515,
+  "n_seeds": 6,
+  "exact_K_T": 0.0008958333333333333,
+  "exact_K_R": 0.005461516203703704,
+  "exact_score": 0.02716338734567901
+ },
+ "best_iter": 40,
+ "n_nonfinite": 0,
+ "n_clipped": 5,
+ "validation_history": [
+  {
+   "iter": 10,
+   "stage": 0,
+   "tag": "periodic",
+   "validation": {
+    "admissible": true,
+    "min_base_separation_m": 0.04865874479228987,
+    "max_reach_m": 0.1500380442098568,
+    "servo_link_len_margin_m": 0.004402774978612453,
+    "n_seeds": 6,
+    "exact_K_T": 0.0003958333333333333,
+    "exact_K_R": 0.0030743634259259257,
+    "exact_score": 0.014206211419753086
+   }
+  },
+  {
+   "iter": 20,
+   "stage": 0,
+   "tag": "periodic",
+   "validation": {
+    "admissible": true,
+    "min_base_separation_m": 0.04940534724139209,
+    "max_reach_m": 0.15105339217922992,
+    "servo_link_len_margin_m": 0.004223296871160798,
+    "n_seeds": 6,
+    "exact_K_T": 0.0004166666666666667,
+    "exact_K_R": 0.0030743634259259257,
+    "exact_score": 0.014414544753086421
+   }
+  },
+  {
+   "iter": 30,
+   "stage": 1,
+   "tag": "periodic",
+   "validation": {
+    "admissible": true,
+    "min_base_separation_m": 0.052972289226305855,
+    "max_reach_m": 0.1516317516513471,
+    "servo_link_len_margin_m": 0.00441272110119241,
+    "n_seeds": 6,
+    "exact_K_T": 0.0007708333333333333,
+    "exact_K_R": 0.004846643518518518,
+    "exact_score": 0.023863811728395058
+   }
+  },
+  {
+   "iter": 40,
+   "stage": 1,
+   "tag": "stage_end",
+   "validation": {
+    "admissible": true,
+    "min_base_separation_m": 0.053862317627610436,
+    "max_reach_m": 0.15176529787526255,
+    "servo_link_len_margin_m": 0.0045148926818302515,
+    "n_seeds": 6,
+    "exact_K_T": 0.0008958333333333333,
+    "exact_K_R": 0.005461516203703704,
+    "exact_score": 0.02716338734567901
+   }
+  }
+ ],
+ "admissibility": {
+  "admissible": true,
+  "min_base_separation_m": 0.053862317627610436,
+  "max_reach_m": 0.15176529787526255,
+  "base_separations": {
+   "index-middle": 0.0592161278040273,
+   "index-thumb": 0.053862317627610436,
+   "middle-thumb": 0.09889526553481211
+  },
+  "reaches": {
+   "index": 0.15176529787526255,
+   "middle": 0.1514001969518597,
+   "thumb": 0.14907833697645953
+  },
+  "violations": [],
+  "min_sep_required_m": 0.0333,
+  "reach_max_m": 0.25,
+  "envelope": {
+   "ok": true,
+   "violations": [],
+   "min_servo_radius_m": 0.0164,
+   "min_servo_link_len_m": 0.038514892681830254,
+   "servo_len_margin_m": 0.0045148926818302515,
+   "tip_radius_m": [
+    0.0118
+   ],
+   "envelope": {
+    "servo_radius_m": 0.0164,
+    "servo_len_min_m": 0.034,
+    "tip_radius_m": 0.0118
+   }
+  },
+  "margins_m": {
+   "base_separation": 0.020562317627610432,
+   "reach": 0.09823470212473745,
+   "servo_link_len": 0.0045148926818302515
+  },
+  "lengths_m": {
+   "shortest_servo_link": 0.038514892681830254,
+   "shortest_tip": 0.02568217494321538,
+   "longest": 0.044735217370971726
+  }
+ },
+ "kkt_method": "reduced",
+ "n_evaluations": 40,
+ "start_admissibility": {
+  "admissible": true,
+  "min_base_separation_m": 0.04149121748148963,
+  "max_reach_m": 0.1475085217778979,
+  "base_separations": {
+   "index-middle": 0.04149121748148963,
+   "index-thumb": 0.04912968568293772,
+   "middle-thumb": 0.08185281957915741
+  },
+  "reaches": {
+   "index": 0.14215513266493612,
+   "middle": 0.14330391341516796,
+   "thumb": 0.1475085217778979
+  },
+  "violations": [],
+  "min_sep_required_m": 0.0333,
+  "reach_max_m": 0.25,
+  "envelope": {
+   "ok": true,
+   "violations": [],
+   "min_servo_radius_m": 0.0164,
+   "min_servo_link_len_m": 0.0390893410267357,
+   "servo_len_margin_m": 0.005089341026735694,
+   "tip_radius_m": [
+    0.0118
+   ],
+   "envelope": {
+    "servo_radius_m": 0.0164,
+    "servo_len_min_m": 0.034,
+    "tip_radius_m": 0.0118
+   }
+  },
+  "margins_m": {
+   "base_separation": 0.008191217481489627,
+   "reach": 0.10249147822210211,
+   "servo_link_len": 0.005089341026735694
+  },
+  "lengths_m": {
+   "shortest_servo_link": 0.0390893410267357,
+   "shortest_tip": 0.022877014981700514,
+   "longest": 0.044571785801702846
+  }
+ },
+ "n_start_seeds": 6,
+ "platform": "gpu"
+}

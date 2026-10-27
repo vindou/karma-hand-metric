@@ -31,7 +31,8 @@ from .topology import Topology
 from . import geometry as geo
 
 __all__ = ["ContactAssignment", "ContactSet", "from_seed", "contact_pass", "object_clearance",
-           "self_clearance", "smooth_max_over_assignments", "antipodal_margin", "assignment_mask"]
+           "self_clearance", "smooth_max_over_assignments", "antipodal_margin", "assignment_mask", "mixed_radii",
+           "reference_gates_per_capsule"]
 
 
 class ContactAssignment(NamedTuple):
@@ -119,6 +120,37 @@ def self_clearance(hm: HandModel, cp: geo.CapsulePass, beta=None):
     if beta is None:
         return geo.hard_min_clearance(clearance, mask)
     return geo.softmin(clearance, beta, mask)
+
+
+def mixed_radii(hm: HandModel, link_radius) -> bool:
+    """Host check: some capsule's radius differs from the task's contact radius ``link_radius`` (D19's servo links).
+    The reference two-finger kernels (``karma_jax``) apply one radius to every capsule; with mixed radii their
+    collision gates are re-applied per capsule (:func:`reference_gates_per_capsule`)."""
+    return not np.allclose(np.asarray(hm.cap_radius, float), float(link_radius), rtol=0.0, atol=1e-12)
+
+
+def reference_gates_per_capsule(hm: HandModel, fkr, p, r_s, pair, eps_g, eps_col):
+    """The gates of the reference two-finger kernels (``karma_jax.steps._validate``, the pinch-IK feasibility and the
+    seed polish), with each capsule's own radius (SPEC §11.4 item 11.1): ``(gap_ok, collision_ok, self_ok)`` for the
+    contact ``pair`` [2]. Gap: both pair capsules within ``eps_g``. Collision: the sphere clears every other capsule by
+    ``eps_col``. Self-collision: the kernels' own scope (thumb vs index capsules of ``hm.dm``, or every pair of fingers
+    when the model carries ``cap_group``), clearance ``dist - r_i - r_j >= eps_col``."""
+    cp = geo.capsule_pass(hm, fkr, p, r_s)
+    gap_ok = jnp.maximum(jnp.abs(cp.gap[pair[0]]), jnp.abs(cp.gap[pair[1]])) <= eps_g
+    C = cp.gap.shape[0]
+    idx = jnp.arange(C)
+    mask = hm.dm.cap_valid & (idx != pair[0]) & (idx != pair[1])
+    col_ok = jnp.min(jnp.where(mask, cp.gap, jnp.inf)) >= eps_col
+    if getattr(hm.dm, "cap_group", None) is not None:
+        clr, m = geo.capsule_pair_clearance(hm, cp)
+    else:
+        tc, ic = hm.dm.thumb_caps, hm.dm.index_caps
+        tv, iv = tc >= 0, ic >= 0
+        ti, ii = jnp.where(tv, tc, 0), jnp.where(iv, ic, 0)
+        d = geo.segment_segment_dist(cp.a[ti][:, None, :], cp.b[ti][:, None, :], cp.a[ii][None, :, :], cp.b[ii][None, :, :])
+        clr, m = d - hm.cap_radius[ti][:, None] - hm.cap_radius[ii][None, :], tv[:, None] & iv[None, :]
+    self_ok = jnp.min(jnp.where(m, clr, jnp.inf)) >= eps_col
+    return gap_ok, col_ok, self_ok
 
 
 def smooth_max_over_assignments(values, beta, mask=None):

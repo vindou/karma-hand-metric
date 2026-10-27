@@ -12,6 +12,13 @@ CoM (tip direction; placed at half the link along +x) and the robot YAML
 (active joints, contact links, seed links, ``tip_length_m`` of every terminal
 link). ``effort``/``velocity`` are placeholders no evaluator reads (CLAUDE.md
 rule 3).
+
+Capsule geometry (Phase 11, D19): a design whose capsules do not all share one radius (the
+16.40 mm servo links and 11.8 mm fingertips) gets every link's capsule as ``<visual>`` geometry
+(a cylinder along +x and a sphere at each end; the terminal capsule's axis ends one radius before
+the tip, as in the model). The reference reads ``<collision>`` cylinders to locate fingertips and
+ignores visuals, so the evaluators are unaffected; uniform-radius designs are written as before,
+byte for byte.
 """
 from __future__ import annotations
 
@@ -45,13 +52,29 @@ def _write_order(topo: Topology) -> list[str]:
 
 # ── URDF ─────────────────────────────────────────────────────────────────────
 
-def to_urdf(topo: Topology, params: HandParams, name: str = "opt_hand") -> str:
+def _capsule_visual(length: float, r: float) -> list[str]:
+    """A capsule of axis ``[0, length]`` along +x and radius ``r`` as URDF visuals (cylinder + end spheres)."""
+    out = []
+    if length > 0.0:
+        out += ['    <visual>', f'      <origin xyz="{0.5 * length:.9f} 0 0" rpy="0 1.570796327 0"/>',
+                f'      <geometry><cylinder radius="{r:.6f}" length="{length:.9f}"/></geometry>', '    </visual>']
+    for x in ((0.0, length) if length > 0.0 else (0.0,)):
+        out += ['    <visual>', f'      <origin xyz="{x:.9f} 0 0" rpy="0 0 0"/>', f'      <geometry><sphere radius="{r:.6f}"/></geometry>', '    </visual>']
+    return out
+
+
+def to_urdf(topo: Topology, params: HandParams, name: str = "opt_hand", capsules: bool | None = None) -> str:
+    """``capsules``: write each link's capsule as visual geometry; ``None`` = only when the radii are mixed."""
     fd = params_to_fingers(topo, params)
+    radii = np.asarray(params.cap_radius, dtype=float)
+    if capsules is None:
+        capsules = bool(np.ptp(radii) > 0.0)
     lines = ['<?xml version="1.0"?>', f'<robot name="{name}">', '  <link name="palm"/>']
     for fname in _write_order(topo):
         f = fd[fname]
         parent = "palm"
-        for k in range(len(f["axis_theta"])):
+        n = len(f["axis_theta"])
+        for k in range(n):
             xyz = f["base_xyz"] if k == 0 else [f["link_len"][k - 1], 0.0, 0.0]
             rpy = _rpy(f["base_rotvec"]) if k == 0 else [0.0, 0.0, 0.0]
             ax = _axis(f["axis_theta"][k], f["axis_phi"][k])
@@ -70,8 +93,11 @@ def to_urdf(topo: Topology, params: HandParams, name: str = "opt_hand") -> str:
                 '      <mass value="0.01"/>',
                 '      <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>',
                 '    </inertial>',
-                '  </link>',
             ]
+            if capsules:
+                r = float(radii[topo.joint_id(fname, k)])
+                lines += _capsule_visual(f["link_len"][k] if k < n - 1 else max(f["link_len"][k] - r, 0.0), r)
+            lines.append('  </link>')
             parent = ln
     lines.append('</robot>')
     return "\n".join(lines) + "\n"

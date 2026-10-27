@@ -66,7 +66,7 @@ def eligibility(key, s):
     if key == "armA":
         reasons.append("arm A: index and middle bases 17.8 mm apart, not buildable as three fingers (failure case, SPEC §11.2)")
     if not s["admissibility"]["admissible"]:
-        reasons.append("inadmissible under D18: " + "; ".join(s["admissibility"]["violations"]))
+        reasons.append(f"inadmissible under {s.get('box', 'd18').upper()}: " + "; ".join(s["admissibility"]["violations"]))
     if not all(v > 0 for v in p["two_values"]):
         reasons.append(f"no exact two-finger coverage under some seed configuration ({p['two_values']})")
     if not all(n > 0 for n in p["n_seeds_3"]):

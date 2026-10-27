@@ -17,6 +17,10 @@ Two-finger pinch seeds, found deterministically with the reference's recipe on t
    sorting; a design with fewer feasible seeds gets invalid lanes that score
    zero, never a different number of evaluations.
 
+With mixed capsule radii (D19, Phase 11) the reference IK's feasibility and the polish, which apply one
+radius to every capsule, are followed by the same gates with each capsule's own radius
+(:func:`dkarma.core.contacts.reference_gates_per_capsule`).
+
 :func:`reproject` is the differentiable per-morphology re-projection of a stored
 seed (Gauss-Newton on the contact gaps with the sphere centre free to translate
 along the pinch axis is *not* needed: the reference keeps the centre fixed and
@@ -40,7 +44,7 @@ from karma_jax.seeds import _polish_one, _object_jacobian, _axis_segment
 
 from ..core.morphology import HandModel
 from ..core.topology import Topology
-from ..core.contacts import ContactAssignment
+from ..core.contacts import ContactAssignment, mixed_radii, reference_gates_per_capsule
 from ..core.kinematics import capsule_endpoints
 from ..metrics.commands import seed_frame
 from .projection import project
@@ -146,6 +150,16 @@ def solve_candidates(hm: HandModel, topo: Topology, sp: StepParams, cfg: SeedCon
     return np.concatenate(qs), np.concatenate(ps), np.concatenate(gs), np.concatenate(fs)
 
 
+def envelope_ok(hm: HandModel, topo: Topology, sp: StepParams, q, p, dtype=jnp.float64) -> np.ndarray:
+    """bool ``[K]``: the seed pair's states pass the reference gates with each capsule's own radius (D19)."""
+    pair = jnp.asarray(topo.seed_caps(), jnp.int32)
+    f = jax.jit(jax.vmap(lambda qq, pp: jnp.stack(reference_gates_per_capsule(hm, forward_kinematics(hm.dm, qq), pp, sp.sphere_radius, pair,
+                                                                              sp.eps_g, sp.eps_col))))
+    if np.asarray(q).shape[0] == 0:
+        return np.zeros(0, bool)
+    return np.all(np.asarray(f(jnp.asarray(q, dtype), jnp.asarray(p, dtype))), axis=1)
+
+
 def select(q, p, max_gap, feasible, cfg: SeedConfig) -> np.ndarray:
     """Indices of the budgeted seeds: feasible, deduplicated, sorted by ``(max_gap, q)``."""
     idx = np.nonzero(feasible)[0]
@@ -165,6 +179,8 @@ def polish_and_frame(hm: HandModel, topo: Topology, sp: StepParams, q, p, cfg: S
     pair = jnp.asarray(topo.seed_caps(), jnp.int32)
     pol = jax.jit(jax.vmap(lambda qq, pp: _polish_one(hm.dm, sp, qq, pp, pair, cfg.polish_iters, cfg.polish_step)))
     q_new, gap_new, feas = pol(jnp.asarray(q, dtype), jnp.asarray(p, dtype))
+    if mixed_radii(hm, sp.link_radius):            # D19: the polished state must also pass the per-capsule gates
+        feas = jnp.asarray(np.asarray(feas) & envelope_ok(hm, topo, sp, q_new, p, dtype))
     q_out = jnp.where(feas[:, None], q_new, jnp.asarray(q, dtype))
     jac = jax.jit(jax.vmap(lambda qq, pp: _object_jacobian(hm.dm, sp, qq, pp, pair)))
     J = jac(q_out, jnp.asarray(p, dtype))
@@ -178,6 +194,11 @@ def find_seeds(hm: HandModel, topo: Topology, sp: StepParams, cfg: SeedConfig = 
     q0, centres, stats = candidates(hm, topo, sp, cfg)
     q, p, gap, feas = solve_candidates(hm, topo, sp, cfg, q0, centres, dtype)
     stats.update(n_ik=int(q.shape[0]), n_feasible=int(feas.sum()))
+    if mixed_radii(hm, sp.link_radius):            # D19: the reference feasibility with each capsule's own radius
+        env = envelope_ok(hm, topo, sp, q[feas], p[feas], dtype)
+        f_idx = np.nonzero(feas)[0]
+        feas = feas.copy(); feas[f_idx[~env]] = False
+        stats.update(n_envelope_rejected=int((~env).sum()), n_feasible=int(feas.sum()))
     keep = select(q, p, gap, feas, cfg)
     S, J = cfg.budget, hm.dm.q_ids.shape[0]
     q_s = np.zeros((S, J)); p_s = np.zeros((S, 3)); frame = np.tile(np.eye(3), (S, 1, 1)); valid = np.zeros(S, bool)
@@ -283,8 +304,9 @@ def multi_candidates(hm: HandModel, topo: Topology, fingers: tuple[int, ...], sp
     triples = list(itertools.product(*per_finger))
     all_caps = sorted({c for t in triples for c in t})
     col = {c: i for i, c in enumerate(all_caps)}
-    r_s, r_l = float(sp.sphere_radius), float(sp.link_radius)
-    max_reach = 2.0 * (r_s + r_l) + 2.0 * max(abs(o) for o in cfg.offsets_m)
+    r_s = float(sp.sphere_radius)
+    rad = {c: float(np.asarray(hm.cap_radius)[c]) for c in all_caps}       # each capsule's own radius (the tips': the contact radius)
+    margin = 2.0 * max(abs(o) for o in cfg.offsets_m)
 
     @jax.jit
     def ends(qs):
@@ -306,7 +328,7 @@ def multi_candidates(hm: HandModel, topo: Topology, fingers: tuple[int, ...], sp
             for i in range(len(tri_caps)):
                 for j in range(i + 1, len(tri_caps)):
                     p0, p1 = closest_points_on_segments(*segs[tri_caps[i]], *segs[tri_caps[j]])
-                    if np.linalg.norm(p1 - p0) > max_reach:
+                    if np.linalg.norm(p1 - p0) > (r_s + rad[tri_caps[i]]) + (r_s + rad[tri_caps[j]]) + margin:
                         ok = False
                     pts += [p0, p1]
             if not ok:
@@ -418,5 +440,5 @@ def reproject(hm: HandModel, q, p, asg: ContactAssignment, sp: StepParams, iters
 
 
 __all__ = ["SeedConfig", "SeedSet", "joint_samples", "candidates", "solve_candidates", "select",
-           "polish_and_frame", "find_seeds", "assignment", "reproject", "solve_multi_ik", "multi_candidates",
+           "polish_and_frame", "envelope_ok", "find_seeds", "assignment", "reproject", "solve_multi_ik", "multi_candidates",
            "find_multi_seeds"]

@@ -33,7 +33,9 @@ import numpy as np
 
 jax.config.update("jax_enable_x64", True)
 
-from dkarma.core import Topology, Bounds, anthropomorphic, encode, decode, load_task_spec, fixed_from_params  # noqa: E402
+from dkarma.core import Topology, Bounds, anthropomorphic, capsule_radii, encode, decode, load_task_spec, fixed_from_params  # noqa: E402
+from dkarma.core.morphology import DEFAULT_CAPSULE_RADIUS_M  # noqa: E402
+from dkarma.core.admissibility import R_SERVO_M, SERVO_LEN_MIN_M  # noqa: E402
 from dkarma.core.actuation import load_actuation_spec  # noqa: E402
 from dkarma.solvers.seed_projection import SeedConfig  # noqa: E402
 from dkarma.metrics.config import DIFF_KARMA, FULL_KARMA  # noqa: E402
@@ -43,6 +45,16 @@ from dkarma.optimization.objectives import exact_validation  # noqa: E402
 from dkarma.tests.conftest import load_design  # noqa: E402
 
 BOUNDS = Bounds(link_len_min_m=0.012, link_len_max_m=0.090, tip_len_min_m=0.012, tip_len_max_m=0.090, base_xyz_max_m=0.10)
+# Phase 11 (SPEC §8.1 D19, §11.4): the 34 mm floor on links 0-2 (the XL330 case along the link); the fingertip keeps 12 mm
+BOUNDS_D19 = Bounds(link_len_min_m=SERVO_LEN_MIN_M, link_len_max_m=0.090, tip_len_min_m=0.012, tip_len_max_m=0.090, base_xyz_max_m=0.10)
+
+
+def nominal_d19(topo, pitch_m: float = 0.040, tip_extra_m: float = 0.0):
+    """Phase 11's nominal start N11 (SPEC §11.4 item 11.2): the anthropomorphic start with links 0-2 at max(L, 40 mm), the
+    fingertips unchanged (``tip_extra_m``: the fallback that lengthens every fingertip), the index-middle pitch ``pitch_m``
+    (40 mm; the fallback raises it), and the D19 radii (16.40 mm links 0-2, 11.8 mm fingertips)."""
+    return anthropomorphic(topo, capsule_radii(topo, R_SERVO_M, DEFAULT_CAPSULE_RADIUS_M), pitch_m=pitch_m, link_floor_m=0.040,
+                           tip_extra_m=tip_extra_m)
 
 HYGIENE = dict(grad_clip=100.0, skip_nonfinite=True, reset_moments=True)
 HYGIENE2 = dict(grad_clip=None, grad_spike=10.0, skip_nonfinite=True, reset_moments=True)   # skip spikes instead of clipping them
@@ -67,7 +79,11 @@ VARIANTS = {
 }
 
 
-def objective_spec(name):
+def objective_spec(name, n11: dict | None = None):
+    """``full3_d19`` (Phase 11): ``full3`` in the D19 box from N11 (``n11``: the frozen ``nominal_d19`` keyword arguments)."""
+    if name == "full3_d19":
+        spec = objective_spec("full3")
+        return dict(spec, params0=nominal_d19(spec["topo"], **(n11 or {})), bounds=BOUNDS_D19)
     if name == "diff2":
         topo, params0, _ = load_design("baseline")
         cfg = replace(DIFF_KARMA, commands=CommandConfig(n_cells=5, n_rot_steps=12))
@@ -81,12 +97,14 @@ def objective_spec(name):
 
 def make_starts(spec, task, n_starts, scale, out, seed=123, log=print, scales=None):
     """Nominal start plus Sobol perturbations with seeds; cached in ``out/starts.json``.
-    ``scales``: per-Sobol-point perturbation scale (default ``scale`` for every point)."""
+    ``scales``: per-Sobol-point perturbation scale (default ``scale`` for every point). The design box is
+    ``spec["bounds"]`` (default ``BOUNDS``); every drawn point is listed with its seed count in ``points``."""
     import jax.flatten_util
     from scipy.stats.qmc import Sobol
     topo, params0, cfg = spec["topo"], spec["params0"], spec["cfg"]
+    bounds = spec.get("bounds", BOUNDS)
     cache = Path(out) / "starts.json"
-    phi0 = encode(params0, topo, BOUNDS)
+    phi0 = encode(params0, topo, bounds)
     x0, unravel = jax.flatten_util.ravel_pytree(phi0)
     if cache.exists():
         rec = json.loads(cache.read_text())
@@ -95,19 +113,21 @@ def make_starts(spec, task, n_starts, scale, out, seed=123, log=print, scales=No
     pts = Sobol(d=x0.shape[0], scramble=True, seed=seed).random(8 * n_starts)
     fixed = fixed_from_params(params0)
     k = 0
+    points = []
     for j, p in enumerate(pts):
         if len(starts) >= n_starts:
             break
         sc = scales[j] if scales is not None and j < len(scales) else scale
         x = x0 + sc * jnp.asarray(2.0 * p - 1.0)
-        params = decode(unravel(x), topo, BOUNDS, fixed)
-        obj = make_objective(topo, params, BOUNDS, task, cfg, SeedConfig(budget=spec["budget"]))
+        params = decode(unravel(x), topo, bounds, fixed)
+        obj = make_objective(topo, params, bounds, task, cfg, SeedConfig(budget=spec["budget"]))
         n = int(obj.seeds.valid.sum())
         log(f"  sobol point {j}: {n} seeds")
+        points.append(dict(sobol_index=j, scale=float(sc), n_seeds=n, accepted=bool(n >= spec["min_seeds"]), seed_stats={a: v for a, v in obj.seeds.stats.items() if isinstance(v, (int, float))}))
         if n >= spec["min_seeds"]:
             k += 1
             starts.append((f"start{k}_sobol{j}_s{sc:g}", x))
-    cache.write_text(json.dumps(dict(seed=seed, scale=scale, scales=scales, starts=[dict(name=n, x=np.asarray(x).tolist()) for n, x in starts]), indent=1))
+    cache.write_text(json.dumps(dict(seed=seed, scale=scale, scales=scales, starts=[dict(name=n, x=np.asarray(x).tolist()) for n, x in starts], points=points), indent=1))
     return [(n, unravel(x)) for n, x in starts], unravel
 
 

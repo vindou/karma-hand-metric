@@ -84,7 +84,7 @@ class Phi(NamedTuple):
 
 @dataclass(frozen=True)
 class Bounds:
-    """Admissible design box (SPEC §8.1). ``l_min`` only avoids degenerate links."""
+    """Admissible design box (SPEC §8.1). ``l_min`` only avoids degenerate links (Phase 11, D19: the 34 mm servo case)."""
     link_len_min_m: float = 0.012
     link_len_max_m: float = 0.080
     tip_len_min_m: float = 0.012
@@ -359,11 +359,23 @@ def random_params(topo: Topology, key, bounds: Bounds | None = None, lim_deg=(15
     )
 
 
-def anthropomorphic(topo: Topology, cap_radius=DEFAULT_CAPSULE_RADIUS_M) -> HandParams:
+def capsule_radii(topo: Topology, link_radius_m: float, tip_radius_m: float) -> np.ndarray:
+    """``[C]`` radii in the flat capsule order: ``link_radius_m`` for every non-terminal link,
+    ``tip_radius_m`` for every fingertip (D19: 16.40 mm servo links, 11.8 mm fingertips)."""
+    return np.where(topo.is_terminal, tip_radius_m, link_radius_m).astype(float)
+
+
+def anthropomorphic(topo: Topology, cap_radius=DEFAULT_CAPSULE_RADIUS_M, pitch_m: float = 0.030,
+                    link_floor_m: float | None = None, tip_extra_m: float = 0.0) -> HandParams:
     """Hand-drawn feasible start. The thumb-like finger (``topo.pair[0]``) is set
     proximal/ulnar and rolled into opposition; every other finger lies along +x in the
-    palm plane (abduction, then flexions), spaced 22 mm apart in y. For the two-finger
-    family it reproduces ``optimize/hand_family.py:anthropomorphic_x0`` exactly."""
+    palm plane (abduction, then flexions), spaced ``pitch_m`` apart in y (30 mm). For the
+    two-finger family it reproduces ``optimize/hand_family.py:anthropomorphic_x0`` exactly.
+
+    ``cap_radius`` is a scalar or ``[C]`` (:func:`capsule_radii`). Phase 11's nominal start N11
+    (SPEC §11.4 item 11.2) sets ``link_floor_m=0.040`` (every link but the fingertip at
+    ``max(L, link_floor_m)``), ``pitch_m=0.040`` and the D19 radii; ``tip_extra_m`` lengthens every
+    fingertip (the N11 fallback). The defaults change nothing."""
     from scipy.spatial.transform import Rotation
     d = math.radians
     hp = math.pi / 2
@@ -381,9 +393,13 @@ def anthropomorphic(topo: Topology, cap_radius=DEFAULT_CAPSULE_RADIUS_M) -> Hand
             lens = (0.100 * w / w.sum()).tolist()
             rows = [(hp, hp, lens[0], d(20), d(20)), (hp, 0.0, lens[1], d(15), d(75)),
                     (hp, 0.0, lens[2], d(15), d(75)), (hp, 0.0, lens[3], d(15), d(75))]
-            base_xyz, rv = [0.0, 0.030 * others, 0.0], [0.0, 0.0, 0.0]     # 30 mm pitch: 6.4 mm clearance between 11.8 mm capsules
+            base_xyz, rv = [0.0, pitch_m * others, 0.0], [0.0, 0.0, 0.0]     # 30 mm pitch: 6.4 mm clearance between 11.8 mm capsules
             others += 1
         rows = [rows[min(k, len(rows) - 1)] for k in range(n)]
+        if link_floor_m is not None:
+            rows = [r if k == n - 1 else (r[0], r[1], max(r[2], link_floor_m), r[3], r[4]) for k, r in enumerate(rows)]
+        if tip_extra_m:
+            rows[-1] = (rows[-1][0], rows[-1][1], rows[-1][2] + tip_extra_m, rows[-1][3], rows[-1][4])
         fingers[name] = dict(base_xyz=base_xyz, base_rotvec=rv,
                              axis_theta=[r[0] for r in rows], axis_phi=[r[1] for r in rows],
                              link_len=[r[2] for r in rows], lim_lo=[r[3] for r in rows], lim_hi=[r[4] for r in rows])
@@ -393,4 +409,4 @@ def anthropomorphic(topo: Topology, cap_radius=DEFAULT_CAPSULE_RADIUS_M) -> Hand
 __all__ = ["DEFAULT_CAPSULE_RADIUS_M", "HandParams", "Phi", "Bounds", "FixedParams", "decode", "encode",
            "fixed_from_params", "rotvec_to_matrix", "axis_from_angles", "HandModel", "build_hand_model",
            "build_hand_model_from_phi", "design_in_axes", "params_from_fingers", "params_to_fingers",
-           "from_hand_spec", "to_hand_spec_dict", "random_params", "anthropomorphic"]
+           "from_hand_spec", "to_hand_spec_dict", "random_params", "capsule_radii", "anthropomorphic"]

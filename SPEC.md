@@ -262,7 +262,9 @@ orientation:
   three-finger palm 60–80 mm wide. LEAP, built from XC330 servos with the
   same 20 × 34 × 26 mm case, has `L_ref` = 249 mm. New designs will be in
   this range; the spec does not force a minimum link length (remote actuation
-  stays allowed), it only uses the scale to size the task.
+  stays allowed), it only uses the scale to size the task. *Superseded for
+  Phase 11 by D19 (§8.1, owner's decision 2026-10-23): links 0–2 each hold an
+  XL330 case, so they are at least 34 mm long and 32.8 mm thick.*
 - **Task cube.** LEAP's published reachable set (792 voxels of 12.5 mm) spans
   175 × 162 × 150 mm and voxel indices −8..8 about the seed, i.e. ±100 mm.
   Allegro spans 122 × 100 × 111 mm, D'Claw 213 × 180 × 180 mm. A ±100 mm cube
@@ -663,7 +665,8 @@ Own module, agnostic to metric internals.
 
 `phi* = argmax_{phi in Phi} J(phi)` with `Phi`: link-length boxes, unit axes,
 finger-base regions, an overall reach bound `reach(phi) <= L_max`, and fixed
-limits and torque ceilings. No bearing, servo or structural constraints.
+limits and torque ceilings. No bearing or structural constraints; from Phase 11 the servo envelope
+(D19, below) is the one packaging constraint.
 
 **Admissibility (D18, added 2026-10-13 after the Phase 8 review).** A design is admissible only
 if no two modelled fingers occupy the same space: every pair of capsules of different fingers
@@ -676,6 +679,30 @@ every configuration (`docs/phase8_report.md` §8.5). Every optimizer, baseline i
 D18 from Phase 9 on: the base-separation condition as a smooth penalty and a hard check, the
 all-finger clearance as the self-collision gate of every evaluator. The reach bound is 250 mm
 per finger and is the global hand envelope (owner's decision, §16 item 10).
+
+**Servo envelope (D19, owner's decision 2026-10-23, §16 item 14; applies from Phase 11).** In the
+direct-drive chain, joint 0's servo sits in the palm (not modelled) and the servos of joints 1–3 sit in
+links 0–2; the fingertip link holds none, as §2.1's mass model already assumes (28 g for links 0–2,
+10 g for the fingertip). Each of links 0–2 must contain one XL330-M077-T case, 20.0 × 34.0 × 26.0 mm
+(datasheet, §2.1; the owner's measurement of 34 × 20 × 23 mm fits inside it), with its 34 mm side along
+the link axis and its 20 × 26 mm cross-section centred on the axis. The link's capsule contains the case
+when:
+
+* its radius is at least half the cross-section diagonal, `r_servo = sqrt(20² + 26²) / 2 = 16.40 mm`
+  (diameter 32.80 mm);
+* its length (joint to joint) is at least the case length, `L_min = 34 mm`.
+
+Links 0–2 all use `r_servo` and the 34 mm floor. A relaxation of link 0's length (joint 1's servo
+mounted across the finger at the knuckle, link 0 back to 12–90 mm) was set on 2026-10-23 and withdrawn by
+the owner on 2026-10-24, before any Phase 11 start was evaluated: link 0 keeps the 34 mm floor.
+
+The fingertip link keeps `r_l = 11.8 mm` and its length bounds (12–90 mm). It is the contact surface,
+so the frozen task's contact radius (`link_radius_m`, §2) is unchanged. D18's rule then gives a base
+separation of `2 r_servo + eps_col = 33.30 mm`, because the base capsule is a servo link. The all-finger
+clearance uses each capsule's own radius. These are packaging bounds, not a mechanical design: horn
+placement, cabling, bearings and the palm stay out of scope. None of the 70 designs of Phases 7–10
+satisfies D19: in every one, link 0 of the index or middle finger sits at the old 12 mm floor, and a
+link 1 or 2 is shorter than 34 mm (link 2 in 193 of their 210 fingers).
 
 ### 8.2 Parameterization
 
@@ -816,6 +843,7 @@ Do not advance because code runs; advance when the acceptance tests pass.
 | **8 Calibration and validation** (§11.1) | actuation-penalty recalibration, continuation repair, seed-policy study, statistically meaningful optimizer comparison, verification of the three-contact failure, independent simulation, fabrication-candidate selection | per §11.1; no new metric formulation |
 | **9 Admissible baselines and controller-independent validation** (§11.2) | KKT-derivative repair with a three-way derivative comparison, the collision-valid original-KaRMA baseline and the key comparison against Full KaRMA on the shared admissible design space, force/impedance MuJoCo replay with separated success criteria, 16-seed final validation, fabrication-candidate selection | per §11.2; no new metric formulation |
 | **10 Compliant contact, powered admissible comparison, deployment-relevant grasps** (§11.3) | compliant-fingertip MuJoCo replay with separated outcomes, the A′ vs Full-D18 comparison on ≥ 16 new starts with a pre-registered common manipulation endpoint, the task-feasible grasp subset `S_task`, a revised selection criterion frozen before re-selection | per §11.3; framework fixed, no new metric formulation |
+| **11 Re-optimization inside the servo envelope** (§11.4) | D19 in code (per-capsule radii, the 34 mm floor on links 0–2, the 33.30 mm base separation) with a bit-identical regression, a new start set, Full KaRMA + Adam on 24 starts, the 10.2 evaluation pipeline, selection by criterion v2 with the original criterion alongside, the export of the selected design | per §11.4; D19 is the only change, no new metric formulation |
 
 Phase 0 was delivered on 2026-10-11 (`docs/phase0_report.md`): fixtures in
 `dkarma/fixtures/`, padding fixes with tests in `karma_jax/`, and the GPU
@@ -843,7 +871,11 @@ Full score 5 of 8, p = 0.38; on simulated three-contact execution 6 of 8, p = 0.
 two-finger hand, 7 of 8, p = 0.016), a force-floor controller in MuJoCo (three-contact discrepancy *mixed*),
 stable design rankings across three seed sets, and no fabrication candidate passing the written criterion.
 The owner's review of Phase 9 (`docs/phase9_review_2026-10-14.md`) sets Phase 10 (§11.3). The working
-tree stays uncommitted (D15).
+tree stays uncommitted (D15). Phase 10 ran on 2026-10-14/23 (`docs/phase10_report.md`): compliant pads close
+most of the three-contact simulation gap (verdict partial); Full-D18 beats arm A′ on the pre-registered
+manipulation endpoint (22 of 24 new starts, p = 9 × 10⁻⁵); criterion v2 (§16 item 12, pending the owner's
+review) selects Full-D18 start31 and the original criterion selects nothing. On 2026-10-23 the owner set
+the servo envelope (D19, §16 item 14), which no Phase 10 design satisfies, and Phase 11 (§11.4).
 
 ### 11.1 Phase 8: calibration and validation before more optimization (added 2026-10-12)
 
@@ -1184,6 +1216,118 @@ result the review asks for is robust manipulation improvement under a common, me
 design space, measured on a common benchmark (10.2's primary endpoint), not a better score on Full
 KaRMA's own metric.
 
+### 11.4 Phase 11: re-optimization inside the servo envelope (added 2026-10-23)
+
+Scope from the owner's decision of 2026-10-23 (§16 item 14). Phase 10 (`docs/phase10_report.md`) selected
+Full-D18 start31 under criterion v2, pending the owner's review. Its links are 12–47 mm long and every
+capsule has the 11.8 mm radius, so the XL330 cases the hand is to be built from do not fit in it. D19
+(§8.1) makes the servo envelope part of the design box. Phase 11 re-runs the optimization inside D19 and
+selects a new candidate by the same procedure. It makes no comparative claim: the 10.2 result stands for
+the D18 box and is not re-tested. The new floor will bind: in every one of the 70 designs of Phases 7–10,
+link 0 of the index or middle finger sits at the old 12 mm floor and a link 1 or 2 is shorter than 34 mm
+(nearly always link 2). The 16.40 mm proximal capsules also leave less free space around the 30 mm
+sphere.
+
+**D19 is the only change.** It brings per-capsule radii (16.40 mm for links 0–2, 11.8 mm for the
+fingertip), a 34 mm floor on links 0–2, and the 33.30 mm base separation that follows from D18's rule.
+The frozen task stays (§2, `dkarma/configs/task_spec.yaml`), including the 11.8 mm contact radius
+`link_radius_m`. Contacts stay on the fingertip, whose radius is unchanged. The rolling kinematics, the
+10.1 compliant-pad sets (`dkarma/configs/compliant_pads.json`, fitted to the 11.8 mm fingertip) and the
+force-floor controller therefore stay valid. There is no metric, kernel, contact-model, solver or
+optimizer change. The Phase 9/10 settings stay: `kkt_method="reduced"`, `exp_so3_safe`, the norm-100
+clipping, the cached exact evaluators, and suites and exports on the CPU. `karma_jax`'s capsule pass
+applies one radius to every capsule and is not extended. Original-KaRMA scores (the suite's `official_*`
+numbers) are therefore not computed under D19, and nothing in Phase 11 depends on them. Each item ends
+with a section of `docs/phase11_report.md` and green `dkarma/tests` and `karma_jax/tests`. Endpoints,
+rules and thresholds are written into the report, dated, before the data they apply to.
+
+**11.1 D19 in code.**
+
+* *Per-capsule radii throughout.* Classify every use of a capsule radius as either the contact surface
+  (the assigned fingertip capsules: the task's `link_radius_m`, 11.8 mm) or the collision envelope (each
+  capsule's own `cap_radius`). Known uniform-radius assumptions:
+  * `simulation_replay._mjcf_rigid` uses `cap_radius[0]` for every capsule and for the fingertip's
+    length;
+  * `admissibility.MIN_BASE_SEPARATION_M` and `objectives.D18_CONSTRAINTS` hard-code 24.1 mm;
+  * `anthropomorphic` and the start generation take one radius;
+  * `visualize_design` and the URDF export must carry per-capsule radii.
+
+  Audit the seed search, the contact pass, the exact gates (object–capsule collision, all-finger
+  clearance), the exact force and wrench problems, and the admissibility checks.
+* *The D19 box.*
+  * Length floors: 34 mm for links 0–2 and 12 mm for the fingertip; maxima 90 mm; `base_xyz_max_m=0.10`.
+    This is `Bounds(link_len_min_m=0.034, link_len_max_m=0.090, tip_len_min_m=0.012,
+    tip_len_max_m=0.090)`; a per-slot floor, where already implemented, takes 34 / 34 / 34 / 12 mm.
+  * Radii 16.40 / 16.40 / 16.40 / 11.8 mm per finger.
+  * `Constraints(reach_max_m=0.25, base_sep_min_m=0.0333)` with the D18 weights.
+* *Tests.*
+  * Per-capsule gaps, and the object–capsule collision gate with mixed radii: a configuration that
+    clears 11.8 mm but not 16.40 mm is rejected.
+  * D19 admissibility.
+  * The length floors: no decoded link 0, 1 or 2 is shorter than 34 mm.
+  * The MuJoCo scene's capsules match the dkarma model, capsule by capsule.
+  * The existing finite-difference gradient tests pass unchanged.
+* *Regression.* With uniform 11.8 mm radii and the D18 box, a Phase 10 design's suite numbers and one
+  10.2 replay reproduce bit for bit.
+
+**11.2 Start set, frozen before any run.**
+
+* *Nominal start N11.* The anthropomorphic start with links 0–2 at `max(L, 40 mm)` (the §2.2 pitch of a
+  chain of XL330 cases, strictly inside the encoded box). The fingertips (23 / 23 / 25 mm) are unchanged,
+  and the index–middle base pitch is raised from 30 to 40 mm. Two fallbacks apply in order, recorded before any
+  optimization:
+  1. If N11 is not admissible under D19, raise the pitch in 5 mm steps up to 60 mm.
+  2. If N11 has fewer than 3 three-contact seeds (default configuration, budget 12), lengthen the three
+     fingertips together in 5 mm steps up to 45 mm, reporting the attempt counts at every step.
+
+  If neither yields a start, stop and report. Under rule 13, no claim that a grasp does not exist is made
+  without the three 8.5 procedures.
+* *Starts.* N11 plus Sobol perturbations by the 8.4 procedure as coded in `admissible_baseline starts`:
+  the D19 box, its per-point scales, and points with fewer than 3 three-contact seeds rejected and
+  listed. 24 starts in total.
+
+**11.3 Optimization.** Full KaRMA + Adam with the 10.2 Full-D18 settings: 40 iterations in two stages,
+6 three-contact seeds, optimizer seed 0, exact validation every 10 iterations. D19 is enforced
+throughout. Run one process per start on the GPU, and report compute and every returned design's
+admissibility.
+
+**11.4 Evaluation of every returned design** (CPU, the 10.2 pipeline):
+
+* the 9.4 suite with per-seed detail: exact Full and two-finger scores under the three seed
+  configurations, wrench capacities, and `S_task`;
+* the default-configuration export of 12 three-contact seeds, replayed with the 10.1 central pads and
+  with rigid contact, each under the force-floor controller and the position servo;
+* the load sweep.
+
+Report E per design, split into rotations and translations, and the drop-criterion events, split into
+releases and > 20 mm deviations. The Phase 10 selection's E = 45.0 came 38.6 from rotations and 6.4 from
+translations (`results/fabrication_candidates/selected_full_d18_start31_sobol41_s0.25/figures/`).
+
+**11.5 Selection.**
+
+* *Criterion v2* as frozen in §16 item 12, still subject to the owner's review. Its references are
+  computed by their frozen rules:
+  * R3: N11's exact Full score on its own `S_task`, mean over the three configurations, computed before
+    any optimized design is evaluated;
+  * R5: 0.2393, the 10.1 reference (same fingertip, pads and controller).
+
+  Every Phase 11 design is a candidate, and the frozen tie-break applies.
+* *The original 9.5 criterion* (requirements 1, 3 and 4, with eligibility under D19) is applied
+  alongside and never presented as equivalent.
+* *Phase 10.* No Phase 10 design is admissible under D19. The Phase 10 selection is superseded for
+  fabrication, and its results stand for the D18 box. The report compares the Phase 11 selection with
+  it descriptively (what the envelope costs in exact Full score and E), not as a claim.
+* *Acceptance.* A selection, or none, with the criterion's numbers and the original criterion's verdict
+  beside it. A selected design is:
+  * exported to `results/fabrication_candidates/selected_<design>/`;
+  * re-scored from the exported copy;
+  * given figures with `dkarma/experiments/visualize_design.py`.
+
+  `results/fabrication_candidates/README.md` records the outcome.
+
+Phase 11 ends with the report's one-page summary: the selected design (or none) and its numbers, what the
+envelope costs against Phase 10, and the fabrication recommendation with its uncertainty.
+
 ---
 
 ## 12. Experiments
@@ -1337,3 +1481,12 @@ No decisions remain open before Phase 1.
     working notes (the phase prompts, the phase reviews and the source conversation) stay local and out
     of the repository, as do `workspace/` and the bulky optimizer artefacts (`optimize/runs/**/*.pkl`,
     `optimize/runs/**/*.mp4`, the marimo session cache).
+14. **Servo envelope (D19, 2026-10-23).** The hand is built from XL330-M077-T servos in a direct-drive
+    chain, with the servos of joints 1–3 in links 0–2. Each of links 0–2 holds one case,
+    20.0 × 34.0 × 26.0 mm (datasheet; the owner's measurement of 34 × 20 × 23 mm fits inside), and their
+    capsules have radius `sqrt(20² + 26²) / 2 = 16.40 mm`. Each case lies along its link's axis, and
+    links 0–2 are at least 34 mm long. (A relaxation of link 0's length, set on 2026-10-23, was withdrawn
+    by the owner on 2026-10-24, before any Phase 11 start was evaluated.) The fingertip link holds no servo
+    and keeps 11.8 mm, its length bounds and 10 g (§2.1's mass model is unchanged). D18's base separation becomes 33.30 mm. The frozen task is unchanged. Phase 11
+    (§11.4) re-runs the optimization inside D19 to produce a new candidate; none of the 70 Phase 7–10
+    designs is admissible under it.

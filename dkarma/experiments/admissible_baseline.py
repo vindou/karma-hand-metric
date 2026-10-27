@@ -24,6 +24,11 @@ for the starts, the arm A' and Full-D18 designs, arm A and arm B.
 ``summary``: tables and paired statistics (sign counts, Wilcoxon) of arm A' vs Full-D18 per start,
 the seed-configuration spread and the ranking stability (``summary.md`` / ``summary.json``).
 
+``--box d19`` (Phase 11, SPEC §11.4): the D19 servo envelope (``BOXES``): the ``full3_d19`` objective from N11
+(``nominal`` stage: the nominal start and its two fallbacks, frozen in ``<starts-dir>/n11.json``), the D19 bounds,
+``D19_CONSTRAINTS`` and the envelope in every hard check; the suite computes no original-KaRMA numbers (``karma_jax``
+applies one radius to every capsule). The design key of a Phase 11 run is ``full_d19/<start>``.
+
     for K in 0 1 2 3 4 5 6 7; do ~/mamba/envs/karma-jax/bin/python -m dkarma.experiments.admissible_baseline armAprime --only $K --out workspace/phase9/9.2; done
     for K in 0 1 2 3 4 5 6 7; do ~/mamba/envs/karma-jax/bin/python -m dkarma.experiments.admissible_baseline full --only $K --out workspace/phase9/9.2; done
     ~/mamba/envs/karma-jax/bin/python -m dkarma.experiments.admissible_baseline suite --design armAprime/start0_nominal --out workspace/phase9/9.2
@@ -46,7 +51,7 @@ jax.config.update("jax_enable_x64", True)
 
 from dkarma.core import Topology, decode, encode, load_task_spec, build_hand_model, fixed_from_params, anthropomorphic  # noqa: E402
 from dkarma.core.actuation import load_actuation_spec  # noqa: E402
-from dkarma.core.admissibility import admissibility, MIN_BASE_SEPARATION_M, REACH_MAX_M  # noqa: E402
+from dkarma.core.admissibility import admissibility, MIN_BASE_SEPARATION_M, REACH_MAX_M, D19_ENVELOPE, D19_MIN_BASE_SEPARATION_M  # noqa: E402
 from dkarma.solvers.seed_projection import SeedConfig, find_seeds, find_multi_seeds, assignment  # noqa: E402
 from dkarma.solvers.rollout import GraspState  # noqa: E402
 from dkarma.metrics.config import DIFF_KARMA, MC_KARMA, FULL_KARMA  # noqa: E402
@@ -54,10 +59,10 @@ from dkarma.metrics.commands import CommandConfig  # noqa: E402
 from dkarma.metrics import multicontact as MC, act_karma as AK  # noqa: E402
 from dkarma.metrics.exact_library import evaluate_exact, official_karma_physical  # noqa: E402
 from dkarma.optimization import make_objective, adam, save_run  # noqa: E402
-from dkarma.optimization.objectives import exact_validation, D18_CONSTRAINTS  # noqa: E402
+from dkarma.optimization.objectives import exact_validation, D18_CONSTRAINTS, D19_CONSTRAINTS  # noqa: E402
 from dkarma.optimization.optimizers import ADAM_DEFAULTS  # noqa: E402
 from dkarma.export import write_design, design_from_dict  # noqa: E402
-from dkarma.experiments.continuation_study import objective_spec, make_starts, BOUNDS  # noqa: E402
+from dkarma.experiments.continuation_study import objective_spec, make_starts, nominal_d19, BOUNDS, BOUNDS_D19  # noqa: E402
 
 PHASE84_FULL3 = Path("workspace/phase8/8.4/full3")
 ARM_A = Path("results/fabrication_candidates/armA/armA.design.json")
@@ -76,18 +81,99 @@ BUDGET_2, BUDGET_3 = 16, 12
 STARTS_DIR = PHASE84_FULL3     # ``--starts-dir``: Phase 10.2 continues the 8.4 sequence in workspace/phase10/10.2
 N_STARTS = 8                   # ``--n-starts``: 33 in Phase 10.2 (the eight Phase 9 starts + 24 new + the nominal's slot)
 
+# ``--box``: the design box. d18 = Phases 9-10 (24.1 mm bases, uniform 11.8 mm capsules); d19 = Phase 11's servo envelope
+BOXES = {
+    "d18": dict(objective="full3", bounds=BOUNDS, constraints=D18_CONSTRAINTS, envelope=None, official=True, arm="full_d18",
+                min_base_separation_m=MIN_BASE_SEPARATION_M),
+    "d19": dict(objective="full3_d19", bounds=BOUNDS_D19, constraints=D19_CONSTRAINTS, envelope=D19_ENVELOPE, official=False, arm="full_d19",
+                min_base_separation_m=D19_MIN_BASE_SEPARATION_M),
+}
+BOX = BOXES["d18"]
+RUNS_DIR = None                # ``--runs-dir``: where ``<arm>/<start>/optimized_morphology`` live, if not ``--out`` (Phase 11: 11.3 runs, 11.4 evaluation)
+# Phase 11 N11 fallbacks (docs/phase11_report.md P11.2): pitches, then fingertip extensions, tried in order
+N11_PITCHES_M = (0.040, 0.045, 0.050, 0.055, 0.060)
+N11_TIP_EXTRA_M = (0.0, 0.005, 0.010, 0.015, 0.020)
+N11_MIN_SEEDS = 3
+
+
+def box_spec():
+    """The objective spec of the current box (``full3_d19`` reads the frozen N11 from ``STARTS_DIR/n11.json``)."""
+    if BOX["objective"] == "full3_d19":
+        n11 = json.loads((Path(STARTS_DIR) / "n11.json").read_text())["chosen"]
+        return objective_spec("full3_d19", n11=dict(pitch_m=n11["pitch_m"], tip_extra_m=n11["tip_extra_m"]))
+    return objective_spec(BOX["objective"])
+
 
 def load_starts(task, log=print):
-    spec = objective_spec("full3")
+    spec = box_spec()
     starts, unravel = make_starts(spec, task, N_STARTS, 0.25, STARTS_DIR, seed=321, log=log, scales=[0.25] * 4 + [0.5] * 16)
     return spec, starts, unravel
 
 
+def run_nominal(log=print):
+    """Phase 11.2: N11 and its fallbacks in the frozen order (docs/phase11_report.md P11.2); writes ``STARTS_DIR/n11.json``.
+    1. the pitch: the first of ``N11_PITCHES_M`` at which N11 passes the hard D19 check;
+    2. the fingertips: the first of ``N11_TIP_EXTRA_M`` with >= 3 three-contact seeds (default configuration, budget 12),
+       with the seed-search attempt counts at every step."""
+    task = load_task_spec(); sp = task.step_params()
+    topo = Topology.three_finger(4)
+    fn = Path(STARTS_DIR) / "n11.json"
+    if fn.exists():
+        log(f"[nominal] {fn} exists, skipping"); return
+    fingers = (topo.thumb_finger, topo.index_finger, topo.finger_index("middle"))
+    rec = dict(rule="docs/phase11_report.md P11.2", task="fixed physical (SPEC §2)", attempts=[], chosen=None)
+    pitch = None
+    for pm in N11_PITCHES_M:
+        adm = admissibility(nominal_d19(topo, pitch_m=pm), topo, envelope=D19_ENVELOPE)
+        rec["attempts"].append(dict(step="pitch", pitch_m=pm, admissible=adm["admissible"], violations=adm["violations"],
+                                    min_base_separation_m=adm["min_base_separation_m"], base_separations=adm["base_separations"]))
+        log(f"[nominal] pitch {pm * 1e3:.0f} mm: admissible {adm['admissible']} {adm['violations']}")
+        if adm["admissible"]:
+            pitch = pm; break
+    if pitch is not None:
+        for ex in N11_TIP_EXTRA_M:
+            params = nominal_d19(topo, pitch_m=pitch, tip_extra_m=ex)
+            adm = admissibility(params, topo, envelope=D19_ENVELOPE)
+            hm = build_hand_model(topo, params); act = AK.actuation_for(hm, task)
+            t0 = time.perf_counter()
+            s3 = find_multi_seeds(hm, topo, fingers, sp, act, SeedConfig(budget=BUDGET_3))
+            n3 = int(s3.valid.sum())
+            rec["attempts"].append(dict(step="tips", pitch_m=pitch, tip_extra_m=ex, admissible=adm["admissible"], violations=adm["violations"], n_seeds_3=n3,
+                                        seed_stats_3={k: v for k, v in s3.stats.items() if isinstance(v, (int, float))},
+                                        link_len_mm={f: [round(1e3 * x, 6) for x in np.asarray(params.link_len)[i, :topo.n_joints[i]].tolist()] for i, f in enumerate(topo.fingers)},
+                                        seconds=time.perf_counter() - t0))
+            log(f"[nominal] pitch {pitch * 1e3:.0f} mm, fingertips +{ex * 1e3:.0f} mm: admissible {adm['admissible']}, {n3} three-contact seeds; {rec['attempts'][-1]['seed_stats_3']}")
+            if adm["admissible"] and n3 >= N11_MIN_SEEDS:
+                rec["chosen"] = dict(pitch_m=pitch, tip_extra_m=ex, n_seeds_3=n3); break
+    rec["stopped"] = rec["chosen"] is None
+    rec["platform"] = jax.default_backend()
+    Path(STARTS_DIR).mkdir(parents=True, exist_ok=True)
+    if rec["chosen"]:                         # the start design's files (URDF with the capsule visuals, robot YAML, design JSON)
+        write_design(topo, nominal_d19(topo, pitch_m=rec["chosen"]["pitch_m"], tip_extra_m=rec["chosen"]["tip_extra_m"]), Path(STARTS_DIR) / "n11", "n11")
+    fn.write_text(json.dumps(rec, indent=1, default=float))
+    log(f"[nominal] chosen {rec['chosen']}" if rec["chosen"] else "[nominal] neither fallback yields a start: Phase 11 stops here (P11.2)")
+
+
 def run_starts(log=print):
     """Phase 10.2: the 8.4 start procedure continued past the eight Phase 9 starts (``N_STARTS`` starts into
-    ``STARTS_DIR/starts.json``); the first eight must reproduce ``workspace/phase8/8.4/full3/starts.json``."""
+    ``STARTS_DIR/starts.json``); the first eight must reproduce ``workspace/phase8/8.4/full3/starts.json``.
+    Phase 11 (``--box d19``): the same procedure from N11 in the D19 box; the check records every start's D19
+    admissibility and the rejected Sobol points instead."""
     task = load_task_spec()
-    load_starts(task, log)                                   # computes and caches STARTS_DIR/starts.json
+    spec, starts, _ = load_starts(task, log)                 # computes and caches STARTS_DIR/starts.json
+    if BOX["envelope"] is not None:
+        rec = json.loads((Path(STARTS_DIR) / "starts.json").read_text())
+        adm = {}
+        for name, phi in starts:
+            a = admissibility(decode(phi, spec["topo"], BOX["bounds"], fixed_from_params(spec["params0"])), spec["topo"], envelope=BOX["envelope"])
+            adm[name] = dict(admissible=a["admissible"], violations=a["violations"], min_base_separation_m=a["min_base_separation_m"], max_reach_m=a["max_reach_m"],
+                             margins_m=a["margins_m"], lengths_m=a["lengths_m"])
+        rej = [p for p in rec.get("points", []) if not p["accepted"]]
+        out = dict(n_starts=len(starts), names=[n for n, _ in starts], admissibility=adm, rejected_points=rej, box="d19")
+        (Path(STARTS_DIR) / "starts_check.json").write_text(json.dumps(out, indent=1, default=float))
+        log(f"[starts] {len(starts)} starts in {STARTS_DIR}; D19-admissible {sum(v['admissible'] for v in adm.values())}; "
+            f"rejected Sobol points {[(p['sobol_index'], p['n_seeds']) for p in rej]}")
+        return
     ref = json.loads((PHASE84_FULL3 / "starts.json").read_text())["starts"]
     new = json.loads((Path(STARTS_DIR) / "starts.json").read_text())["starts"]
     same = [(r["name"], s["name"], bool(r["name"] == s["name"] and np.array_equal(np.asarray(r["x"]), np.asarray(s["x"])))) for r, s in zip(ref, new)]
@@ -189,36 +275,42 @@ def run_full(k, out: Path, log, kkt_method: str = "exact"):
     topo = spec["topo"]
     cfg = spec["cfg"]
     cfg = replace(cfg, roll=cfg.roll._replace(kkt_method=kkt_method))
-    params0 = decode(phi, topo, BOUNDS, fixed_from_params(spec["params0"]))
-    rdir = out / "full_d18" / name; rdir.mkdir(parents=True, exist_ok=True)
+    bounds, cons, env, arm = BOX["bounds"], BOX["constraints"], BOX["envelope"], BOX["arm"]
+    params0 = decode(phi, topo, bounds, fixed_from_params(spec["params0"]))
+    rdir = out / arm / name; rdir.mkdir(parents=True, exist_ok=True)
     if (rdir / "run.json").exists():
-        log(f"[full_d18/{name}] exists, skipping"); return
-    obj = make_objective(topo, params0, BOUNDS, task, cfg, SeedConfig(budget=spec["budget"]), constraints=D18_CONSTRAINTS)
-    validate = exact_validation(obj, rdir / "val", official=False, enforce_d18=True)
-    log(f"[full_d18/{name}] seeds {int(obj.seeds.valid.sum())}; kkt_method {kkt_method}; constraints {D18_CONSTRAINTS}")
+        log(f"[{arm}/{name}] exists, skipping"); return
+    obj = make_objective(topo, params0, bounds, task, cfg, SeedConfig(budget=spec["budget"]), constraints=cons)
+    validate = exact_validation(obj, rdir / "val", official=False, enforce_d18=True, envelope=env)
+    adm0 = admissibility(params0, topo, envelope=env)
+    log(f"[{arm}/{name}] seeds {int(obj.seeds.valid.sum())}; kkt_method {kkt_method}; constraints {cons}; start admissible {adm0['admissible']} {adm0['violations']}")
     t0 = time.perf_counter()
     res = adam(obj, phi, n_iters=spec["n_iters"], stages=spec["stages"], validate_every=spec["validate_every"], validation_fn=validate,
                log=log, seed=0, instrument=False, warmup=True)
     wall = time.perf_counter() - t0
-    adm = admissibility(res.best_params, topo)
-    config = dict(arm="full_d18", start=name, objective=cfg.name, adam=res.meta["options"], kkt_method=kkt_method, n_iters=spec["n_iters"], stages=spec["stages"],
-                  commands=cfg.commands.__dict__, seed_config=SeedConfig(budget=spec["budget"]).__dict__, bounds=BOUNDS.__dict__,
-                  constraints=D18_CONSTRAINTS.__dict__, optimizer_seed=0, adam_defaults=ADAM_DEFAULTS)
+    adm = admissibility(res.best_params, topo, envelope=env)
+    config = dict(arm=arm, start=name, objective=cfg.name, adam=res.meta["options"], kkt_method=kkt_method, n_iters=spec["n_iters"], stages=spec["stages"],
+                  commands=cfg.commands.__dict__, seed_config=SeedConfig(budget=spec["budget"]).__dict__, bounds=bounds.__dict__,
+                  constraints=cons.__dict__, optimizer_seed=0, adam_defaults=ADAM_DEFAULTS)
+    if env is not None:
+        config.update(envelope=env.__dict__, cap_radius_m=np.asarray(params0.cap_radius).tolist())
     save_run(rdir, topo, params0, res, config, actuator_spec=load_actuation_spec().__dict__, seeds=obj.seeds)
     nonfinite = sum(1 for h in res.training_history if not h["grad_finite"])
-    rec = dict(arm="full_d18", start=name, wall_s=wall, optimizer_time_s=res.meta["optimizer_time_s"], validation_time_s=res.meta["validation_time_s"],
+    rec = dict(arm=arm, start=name, wall_s=wall, optimizer_time_s=res.meta["optimizer_time_s"], validation_time_s=res.meta["validation_time_s"],
                best_validation=res.best_validation, best_iter=res.meta["best_iter"], n_nonfinite=nonfinite,
                n_clipped=sum(1 for h in res.training_history if h["clipped"]), validation_history=res.validation_history,
                admissibility=adm, kkt_method=kkt_method, n_evaluations=len(res.training_history))
+    if env is not None:
+        rec.update(start_admissibility=adm0, n_start_seeds=int(obj.seeds.valid.sum()), platform=jax.default_backend())
     (rdir / "run.json").write_text(json.dumps(rec, indent=1, default=float))
-    log(f"[full_d18/{name}] done: returned exact {res.best_validation.get('exact_score', float('nan')):.4f} (it {res.meta['best_iter']}), admissible {adm['admissible']}, "
+    log(f"[{arm}/{name}] done: returned exact {res.best_validation.get('exact_score', float('nan')):.4f} (it {res.meta['best_iter']}), admissible {adm['admissible']}, "
         f"non-finite {nonfinite}, wall {wall:.0f}s (opt {res.meta['optimizer_time_s']:.0f}s)")
 
 
 # ── suite ────────────────────────────────────────────────────────────────────
 
 def design_by_key(key: str, out: Path):
-    """``armAprime/<start>`` | ``full_d18/<start>`` | ``start/<start>`` | ``armA`` | ``armB``."""
+    """``armAprime/<start>`` | ``full_d18/<start>`` | ``full_d19/<start>`` | ``start/<start>`` | ``armA`` | ``armB``."""
     task = load_task_spec()
     if key == "armA":
         t, p, _ = design_from_dict(json.loads(ARM_A.read_text())); return t, p, dict(source=str(ARM_A))
@@ -228,14 +320,14 @@ def design_by_key(key: str, out: Path):
     spec, starts, _ = load_starts(task, log=lambda s: None)
     if arm == "start":
         phi = dict(starts)[name]
-        return spec["topo"], decode(phi, spec["topo"], BOUNDS, fixed_from_params(spec["params0"])), dict(source=str(PHASE84_FULL3 / "starts.json"))
-    p = out / arm / name / "optimized_morphology" / "optimized_morphology.design.json"
+        return spec["topo"], decode(phi, spec["topo"], BOX["bounds"], fixed_from_params(spec["params0"])), dict(source=str(Path(STARTS_DIR) / "starts.json"))
+    p = Path(RUNS_DIR or out) / arm / name / "optimized_morphology" / "optimized_morphology.design.json"
     t, par, _ = design_from_dict(json.loads(p.read_text()))
     return t, par, dict(source=str(p))
 
 
 def suite_d18(topo, params, task, sp, workdir, seed_cfgs=SEED_CONFIGS, budget_2=BUDGET_2, budget_3=BUDGET_3, official=True, log=print,
-              per_seed_detail: bool = False):
+              per_seed_detail: bool = False, envelope=None):
     """The common three-contact physical suite (fixed physical task of SPEC §2) at the Phase 9.4
     budgets under several seed-search configurations. Exact Full counts use the exact SLSQP force check
     at every sub-step (``MC.evaluate_fixed_contacts_exact``, Phase 8.6). Wrench capacities and the
@@ -243,13 +335,16 @@ def suite_d18(topo, params, task, sp, workdir, seed_cfgs=SEED_CONFIGS, budget_2=
 
     ``per_seed_detail`` (Phase 10.3): also record, under every seed configuration, each three-contact seed's
     joint configuration and sphere position and its wrench capacities in the 14 standard directions, so the
-    task-feasible subset ``S_task`` and the subset scores come from the same seeds as the suite's counts."""
+    task-feasible subset ``S_task`` and the subset scores come from the same seeds as the suite's counts.
+
+    ``envelope`` (Phase 11, D19): the admissibility record includes the servo envelope; call with ``official=False``
+    (the original KaRMA's kernels apply one radius to every capsule)."""
     hm = build_hand_model(topo, params)
     act = AK.actuation_for(hm, task)
     fingers = (topo.thumb_finger, topo.index_finger, topo.finger_index("middle")) if topo.n_fingers >= 3 else None
     cfg_mc = replace(MC_KARMA, commands=CMDS); cfg_full = replace(FULL_KARMA, commands=CMDS); cfg_2 = replace(DIFF_KARMA, commands=CMDS)
     sm = cfg_full.smooth
-    out = dict(admissibility=admissibility(params, topo), budgets=dict(two_finger=budget_2, three_contact=budget_3), per_seed_config={})
+    out = dict(admissibility=admissibility(params, topo, envelope=envelope), budgets=dict(two_finger=budget_2, three_contact=budget_3), per_seed_config={})
     for cname, ckw in seed_cfgs.items():
         rec = {}
         t0 = time.perf_counter()
@@ -280,6 +375,8 @@ def suite_d18(topo, params, task, sp, workdir, seed_cfgs=SEED_CONFIGS, budget_2=
                 rec.update(full_exact_K_T=0.0, full_exact_K_SO3=0.0, mc_exact_K_T=0.0, mc_exact_K_SO3=0.0, full_exact_score=0.0)
         s2 = find_seeds(hm, topo, sp, SeedConfig(budget=budget_2, **ckw))
         rec["n_seeds_2"] = int(s2.valid.sum())
+        if envelope is not None:
+            rec["seed_stats_2"] = {k: v for k, v in s2.stats.items() if isinstance(v, (int, float))}
         if rec["n_seeds_2"]:
             ex2 = evaluate_exact(hm, topo, s2, sp, task, cfg_2)
             rec.update(two_exact_K_T=ex2.K_T, two_exact_K_R=ex2.K_R, two_exact_score=sm.lambda_T * ex2.K_T / sm.ref_T + sm.lambda_R * ex2.K_R / sm.ref_R)
@@ -308,12 +405,17 @@ def run_suite(key: str, out: Path, log, starts_single_config=True, per_seed_deta
     sdir = out / "suite" / key.replace("/", "__"); sdir.mkdir(parents=True, exist_ok=True)
     if (sdir / "suite.json").exists():
         log(f"[suite/{key}] exists, skipping"); return
+    if BOX["envelope"] is not None and key.startswith("start/"):
+        starts_single_config = False          # Phase 11: N11's own S_task under three configurations is criterion v2's R3 reference
     cfgs = SEED_CONFIGS if not (key.startswith("start/") and starts_single_config) else {"default": SEED_CONFIGS["default"]}
     log(f"[suite/{key}] from {src['source']}; seed configs {list(cfgs)}")
     t0 = time.perf_counter()
-    res = suite_d18(topo, params, task, sp, sdir, seed_cfgs=cfgs, log=log, per_seed_detail=per_seed_detail)
+    res = suite_d18(topo, params, task, sp, sdir, seed_cfgs=cfgs, log=log, per_seed_detail=per_seed_detail, official=BOX["official"],
+                    envelope=BOX["envelope"])
     res.update(design=key, source=src["source"], wall_s=time.perf_counter() - t0, task="fixed physical (SPEC §2)", platform=jax.default_backend(),
                jax_version=jax.__version__)
+    if BOX["envelope"] is not None:
+        res.update(box="d19", cap_radius_m=np.asarray(params.cap_radius).tolist())
     (sdir / "suite.json").write_text(json.dumps(res, indent=1, default=float))
     log(f"[suite/{key}] done in {res['wall_s']:.0f}s")
 
@@ -560,7 +662,7 @@ def summarize(out: Path, log=print):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("stage", choices=["starts", "armAprime", "full", "suite", "sweep", "summary"])
+    ap.add_argument("stage", choices=["nominal", "starts", "armAprime", "full", "suite", "sweep", "summary"])
     ap.add_argument("--only", type=int, default=None)
     ap.add_argument("--design", default=None, help="suite: design key (armAprime/<start>, full_d18/<start>, start/<start>, armA, armB)")
     ap.add_argument("--kkt-method", default="exact", help="full: hard-QP derivative (Phase 9.1 choice)")
@@ -568,10 +670,12 @@ def main():
     ap.add_argument("--starts-dir", default=str(PHASE84_FULL3), help="directory of starts.json (Phase 10.2: workspace/phase10/10.2)")
     ap.add_argument("--n-starts", type=int, default=8, help="number of starts of the 8.4 procedure (Phase 10.2: 33)")
     ap.add_argument("--per-seed-detail", action="store_true", help="suite: record seed states and wrench capacities under every seed configuration (Phase 10.3)")
+    ap.add_argument("--box", choices=sorted(BOXES), default="d18", help="design box: d18 (Phases 9-10) or d19 (Phase 11 servo envelope)")
+    ap.add_argument("--runs-dir", default=None, help="suite/sweep: directory of the optimizer runs (<arm>/<start>/), default --out")
     args = ap.parse_args()
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
-    global STARTS_DIR, N_STARTS
-    STARTS_DIR, N_STARTS = Path(args.starts_dir), args.n_starts
+    global STARTS_DIR, N_STARTS, BOX, RUNS_DIR
+    STARTS_DIR, N_STARTS, BOX, RUNS_DIR = Path(args.starts_dir), args.n_starts, BOXES[args.box], args.runs_dir
     log_path = out / "log.txt"
 
     def log(s):
@@ -579,7 +683,9 @@ def main():
         with open(log_path, "a") as fh:
             fh.write(str(s) + "\n")
 
-    if args.stage == "starts":
+    if args.stage == "nominal":
+        run_nominal(log)
+    elif args.stage == "starts":
         run_starts(log)
     elif args.stage == "armAprime":
         run_armAprime(args.only, out, log)

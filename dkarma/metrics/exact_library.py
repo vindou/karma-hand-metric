@@ -22,7 +22,7 @@ from karma_jax.steps import pinch_axis_body
 
 from ..core.morphology import HandModel, Topology
 from ..core.object_model import TaskSpec
-from ..core.contacts import contact_pass
+from ..core.contacts import contact_pass, mixed_radii
 from ..solvers.rollout import GraspState
 from ..solvers.exact import validate_translation, validate_rotation
 from ..solvers.seed_projection import SeedSet, assignment
@@ -62,15 +62,17 @@ CACHED_VALIDATORS = True
 _VALIDATOR_PROGRAMS: dict = {}
 
 
-def _validate_commands(hm, st0, lib, asg, sp, n_sub):
+def _validate_commands(hm, st0, lib, asg, sp, n_sub, envelope: bool = False):
+    """``envelope`` (Phase 11, D19): the per-capsule gates of :mod:`dkarma.solvers.exact`, its own compiled programs."""
     if not CACHED_VALIDATORS:
-        return (jax.vmap(lambda a: validate_translation(hm, st0, a, asg, sp, n_sub))(lib.dp_T),
-                jax.vmap(lambda a: validate_rotation(hm, st0, a, asg, sp))(lib.dth_R))
-    f = _VALIDATOR_PROGRAMS.get(n_sub)
+        return (jax.vmap(lambda a: validate_translation(hm, st0, a, asg, sp, n_sub, envelope=envelope))(lib.dp_T),
+                jax.vmap(lambda a: validate_rotation(hm, st0, a, asg, sp, envelope=envelope))(lib.dth_R))
+    key = n_sub if not envelope else (n_sub, "envelope")
+    f = _VALIDATOR_PROGRAMS.get(key)
     if f is None:
-        f = (jax.jit(lambda hm_, st_, d_, asg_, sp_: jax.vmap(lambda a: validate_translation(hm_, st_, a, asg_, sp_, n_sub))(d_)),
-             jax.jit(lambda hm_, st_, d_, asg_, sp_: jax.vmap(lambda a: validate_rotation(hm_, st_, a, asg_, sp_))(d_)))
-        _VALIDATOR_PROGRAMS[n_sub] = f
+        f = (jax.jit(lambda hm_, st_, d_, asg_, sp_: jax.vmap(lambda a: validate_translation(hm_, st_, a, asg_, sp_, n_sub, envelope=envelope))(d_)),
+             jax.jit(lambda hm_, st_, d_, asg_, sp_: jax.vmap(lambda a: validate_rotation(hm_, st_, a, asg_, sp_, envelope=envelope))(d_)))
+        _VALIDATOR_PROGRAMS[key] = f
     return f[0](hm, st0, lib.dp_T, asg, sp), f[1](hm, st0, lib.dth_R, asg, sp)
 
 
@@ -79,6 +81,7 @@ def evaluate_exact(hm: HandModel, topo: Topology, seeds: SeedSet, sp: StepParams
     asg = assignment(topo, max(2, cfg.contacts))
     n_sub = cfg.commands.n_sub
     n = task.task.n_per_axis
+    envelope = mixed_radii(hm, sp.link_radius)        # D19: the reference kernels' gates re-applied per capsule
     per_seed = []
     for s in range(int(np.asarray(seeds.valid).sum())):
         q, p, frame = seeds.q[s], seeds.p[s], seeds.frame[s]
@@ -86,7 +89,7 @@ def evaluate_exact(hm: HandModel, topo: Topology, seeds: SeedSet, sp: StepParams
         n0 = contact_pass(hm, fk0, p, sp.sphere_radius, asg).normal[0]
         lib = build_library(frame, -n0, cfg.commands)
         st0 = GraspState(q, p, jnp.eye(3, dtype=q.dtype))
-        exT, exR = _validate_commands(hm, st0, lib, asg, sp, n_sub)
+        exT, exR = _validate_commands(hm, st0, lib, asg, sp, n_sub, envelope)
         okT, okR = np.asarray(exT.ok), np.asarray(exR.ok)
         cells, bins = set(), set()
         axis0 = np.asarray(pinch_axis_body(n0, jnp.eye(3, dtype=q.dtype)))
